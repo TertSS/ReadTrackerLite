@@ -1,0 +1,93 @@
+name: Build and Release APK
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: 'Create GitHub Release?'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Prepare Keystores
+        run: |
+          if [ ! -f debug.keystore ]; then
+            keytool -genkey -v -keystore debug.keystore -alias androiddebugkey -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          fi
+          if [ ! -f my-upload-key.jks ]; then
+            keytool -genkey -v -keystore my-upload-key.jks -alias upload -storepass "${{ secrets.STORE_PASSWORD || 'android' }}" -keypass "${{ secrets.KEY_PASSWORD || 'android' }}" -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Release,O=Android,C=US"
+          fi
+
+      - name: Build Release and Debug APK
+        env:
+          KEYSTORE_PATH: ${{ github.workspace }}/my-upload-key.jks
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD || 'android' }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'android' }}
+        run: |
+          if [ -f ./gradlew ]; then
+            chmod +x ./gradlew
+            ./gradlew assembleRelease assembleDebug --stacktrace || ./gradlew assembleDebug
+          else
+            gradle assembleRelease assembleDebug --stacktrace || gradle assembleDebug
+          fi
+
+      - name: Collect Output APKs
+        run: |
+          mkdir -p output_apks
+          find app/build/outputs/apk/ -name "*.apk" -type f -exec cp {} output_apks/ \;
+          echo "Generated APK files:"
+          ls -la output_apks/
+
+      - name: Upload APKs as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ReadTracker-APKs
+          path: output_apks/*.apk
+          retention-days: 30
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.create_release == true)
+        uses: softprops/action-gh-release@v2
+        with:
+          files: output_apks/*.apk
+          name: Release ${{ github.ref_name || 'v1.0.0' }}
+          tag_name: ${{ github.ref_name || 'v1.0.0' }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

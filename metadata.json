@@ -1,0 +1,6 @@
+{
+  "name": "ReadTracker",
+  "description": "Учёт чтения книг, ранобэ, веб-новелл, визуальных новелл и просмотра экранизаций со статистикой, тир-листом и отзывами",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
