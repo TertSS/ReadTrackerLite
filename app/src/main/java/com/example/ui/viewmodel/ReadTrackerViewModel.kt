@@ -395,12 +395,16 @@ class ReadTrackerViewModel(
                 val idx = rows.indexOfFirst { it.id == fromRowId }
                 if (idx != -1) {
                     val row = rows[idx]
-                    val item = row.items.find { it.id == itemId }
                     rows[idx] = row.copy(items = row.items.filter { it.id != itemId })
                     repository.setTierRows(rows)
-                    if (item?.sourceId == null) {
-                        // Independent custom item removed completely
-                    }
+                }
+            } else {
+                // Remove from custom unassigned row
+                val unassignedIdx = rows.indexOfFirst { it.id == "__UNASSIGNED_CUSTOM__" }
+                if (unassignedIdx != -1) {
+                    val row = rows[unassignedIdx]
+                    rows[unassignedIdx] = row.copy(items = row.items.filter { it.id != itemId })
+                    repository.setTierRows(rows)
                 }
             }
         }
@@ -408,7 +412,7 @@ class ReadTrackerViewModel(
 
     fun addTierRow(name: String, color: Long, textColor: Long) {
         viewModelScope.launch {
-            val rows = allTierRows.value
+            val rows = allTierRows.value.filter { it.id != "__UNASSIGNED_CUSTOM__" }
             val newRow = TierListRow(
                 name = name,
                 color = color,
@@ -435,33 +439,63 @@ class ReadTrackerViewModel(
         viewModelScope.launch {
             val rows = allTierRows.value.toMutableList()
             var movedItem: TierItem? = null
+            var fromOriginalIndex = -1
 
             // Find item in source
             if (fromRowId != null) {
                 val fromIndex = rows.indexOfFirst { it.id == fromRowId }
                 if (fromIndex != -1) {
                     val sourceRow = rows[fromIndex]
+                    fromOriginalIndex = sourceRow.items.indexOfFirst { it.id == itemId }
                     movedItem = sourceRow.items.find { it.id == itemId }
                     val newItems = sourceRow.items.filter { it.id != itemId }
                     rows[fromIndex] = sourceRow.copy(items = newItems)
                 }
             } else {
                 // From unassigned pool
-                val unassigned = getUnassignedTierItems(rows)
-                movedItem = unassigned.find { it.id == itemId }
+                val unassignedIdx = rows.indexOfFirst { it.id == "__UNASSIGNED_CUSTOM__" }
+                if (unassignedIdx != -1) {
+                    val unassignedRow = rows[unassignedIdx]
+                    movedItem = unassignedRow.items.find { it.id == itemId }
+                    if (movedItem != null) {
+                        rows[unassignedIdx] = unassignedRow.copy(items = unassignedRow.items.filter { it.id != itemId })
+                    }
+                }
+                if (movedItem == null) {
+                    val unassigned = getUnassignedTierItems(rows)
+                    movedItem = unassigned.find { it.id == itemId }
+                }
             }
 
-            if (movedItem != null && toRowId != null) {
-                val toIndex = rows.indexOfFirst { it.id == toRowId }
-                if (toIndex != -1) {
-                    val destRow = rows[toIndex]
-                    val destItems = destRow.items.toMutableList()
-                    if (targetIndex in 0..destItems.size) {
-                        destItems.add(targetIndex, movedItem)
-                    } else {
-                        destItems.add(movedItem)
+            if (movedItem != null) {
+                val destinationRowId = toRowId ?: if (movedItem.sourceId == null) "__UNASSIGNED_CUSTOM__" else null
+                if (destinationRowId != null) {
+                    var toIndex = rows.indexOfFirst { it.id == destinationRowId }
+                    if (toIndex == -1 && destinationRowId == "__UNASSIGNED_CUSTOM__") {
+                        val newRow = TierListRow(
+                            id = "__UNASSIGNED_CUSTOM__",
+                            name = "UNASSIGNED",
+                            color = 0L,
+                            orderIndex = 999999,
+                            items = emptyList()
+                        )
+                        rows.add(newRow)
+                        toIndex = rows.lastIndex
                     }
-                    rows[toIndex] = destRow.copy(items = destItems)
+                    if (toIndex != -1) {
+                        val destRow = rows[toIndex]
+                        val destItems = destRow.items.toMutableList()
+                        var finalInsertIndex = targetIndex
+                        if (fromRowId == destinationRowId && fromOriginalIndex != -1 && targetIndex > fromOriginalIndex) {
+                            finalInsertIndex = targetIndex - 1
+                        }
+                        if (finalInsertIndex in 0..destItems.size) {
+                            destItems.add(finalInsertIndex, movedItem)
+                        } else {
+                            destItems.add(movedItem)
+                        }
+                        rows[toIndex] = destRow.copy(items = destItems)
+                    }
                 }
             }
 
@@ -476,14 +510,24 @@ class ReadTrackerViewModel(
                 coverUrl = coverUrl,
                 sourceId = null
             )
-            if (targetRowId != null) {
-                val rows = allTierRows.value.toMutableList()
-                val idx = rows.indexOfFirst { it.id == targetRowId }
-                if (idx != -1) {
-                    val row = rows[idx]
-                    rows[idx] = row.copy(items = row.items + newItem)
-                    repository.setTierRows(rows)
-                }
+            val rows = allTierRows.value.toMutableList()
+            val destRowId = targetRowId ?: "__UNASSIGNED_CUSTOM__"
+            var idx = rows.indexOfFirst { it.id == destRowId }
+            if (idx == -1 && destRowId == "__UNASSIGNED_CUSTOM__") {
+                val unassignedRow = TierListRow(
+                    id = "__UNASSIGNED_CUSTOM__",
+                    name = "UNASSIGNED",
+                    color = 0L,
+                    orderIndex = 999999,
+                    items = emptyList()
+                )
+                rows.add(unassignedRow)
+                idx = rows.lastIndex
+            }
+            if (idx != -1) {
+                val row = rows[idx]
+                rows[idx] = row.copy(items = row.items + newItem)
+                repository.setTierRows(rows)
             }
         }
     }
@@ -494,9 +538,9 @@ class ReadTrackerViewModel(
         adaptations: List<Adaptation> = allAdaptations.value,
         mode: LibraryMode = libraryMode.value
     ): List<TierItem> {
-        val assignedSourceIds = rows.flatMap { it.items }.mapNotNull { it.sourceId }.toSet()
+        val assignedSourceIds = rows.filter { it.id != "__UNASSIGNED_CUSTOM__" }.flatMap { it.items }.mapNotNull { it.sourceId }.toSet()
 
-        return if (mode == LibraryMode.BOOKS) {
+        val libraryItems = if (mode == LibraryMode.BOOKS) {
             books
                 .filter { it.id !in assignedSourceIds }
                 .map {
@@ -521,6 +565,9 @@ class ReadTrackerViewModel(
                     )
                 }
         }
+
+        val customUnassigned = rows.find { it.id == "__UNASSIGNED_CUSTOM__" }?.items ?: emptyList()
+        return customUnassigned + libraryItems
     }
 
     // Settings & Goals Actions

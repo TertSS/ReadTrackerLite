@@ -38,6 +38,33 @@ fun AddEditTitleScreen(
     modifier: Modifier = Modifier
 ) {
     val settings by viewModel.appSettings.collectAsStateWithLifecycle()
+
+    if (settings.updatedEditorEnabled) {
+        ModernAddEditTitleScreen(
+            existingBook = existingBook,
+            viewModel = viewModel,
+            onDismiss = onDismiss,
+            modifier = modifier
+        )
+    } else {
+        ClassicAddEditTitleScreen(
+            existingBook = existingBook,
+            viewModel = viewModel,
+            onDismiss = onDismiss,
+            modifier = modifier
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+fun ClassicAddEditTitleScreen(
+    existingBook: BookTitle?,
+    viewModel: ReadTrackerViewModel,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val settings by viewModel.appSettings.collectAsStateWithLifecycle()
     val knownGenres by viewModel.allKnownGenres.collectAsStateWithLifecycle()
 
     var title by remember { mutableStateOf(existingBook?.title ?: "") }

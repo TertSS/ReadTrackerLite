@@ -17,6 +17,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -30,20 +31,135 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.models.*
 import com.example.ui.components.*
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.ReadTrackerViewModel
+import kotlin.math.roundToInt
+
+data class DropTarget(
+    val rowId: String?,
+    val insertIndex: Int
+)
+
+class TierDragDropState {
+    var isDragging by mutableStateOf(false)
+        private set
+    var draggedItem by mutableStateOf<TierItem?>(null)
+        private set
+    var draggedFromRowId by mutableStateOf<String?>(null)
+        private set
+    var dragPosition by mutableStateOf(Offset.Zero)
+        private set
+    var currentDropTarget by mutableStateOf<DropTarget?>(null)
+        private set
+
+    val rowBounds = mutableMapOf<String, Rect>()
+    val rowItemBounds = mutableMapOf<String, MutableMap<Int, Rect>>()
+    var unassignedBounds: Rect? = null
+
+    fun registerRow(rowId: String, rect: Rect) {
+        rowBounds[rowId] = rect
+    }
+
+    fun registerItem(rowId: String, index: Int, rect: Rect) {
+        rowItemBounds.getOrPut(rowId) { mutableMapOf() }[index] = rect
+    }
+
+    fun registerUnassigned(rect: Rect) {
+        unassignedBounds = rect
+    }
+
+    fun startDrag(item: TierItem, fromRowId: String?, initialPos: Offset) {
+        draggedItem = item
+        draggedFromRowId = fromRowId
+        dragPosition = initialPos
+        isDragging = true
+        updateDropTarget(initialPos)
+    }
+
+    fun dragBy(delta: Offset) {
+        val newPos = dragPosition + delta
+        dragPosition = newPos
+        updateDropTarget(newPos)
+    }
+
+    private fun updateDropTarget(pos: Offset) {
+        val uBounds = unassignedBounds
+        if (uBounds != null && uBounds.contains(pos)) {
+            val target = DropTarget(rowId = null, insertIndex = -1)
+            if (currentDropTarget != target) currentDropTarget = target
+            return
+        }
+
+        for ((rowId, rect) in rowBounds) {
+            if (rect.contains(pos)) {
+                val itemsMap = rowItemBounds[rowId] ?: emptyMap()
+                if (itemsMap.isEmpty()) {
+                    val target = DropTarget(rowId = rowId, insertIndex = 0)
+                    if (currentDropTarget != target) currentDropTarget = target
+                    return
+                }
+                val sortedEntries = itemsMap.entries.sortedBy { it.key }
+                var targetIdx = sortedEntries.size
+                for ((idx, itemRect) in sortedEntries) {
+                    if (pos.x < itemRect.center.x) {
+                        targetIdx = idx
+                        break
+                    }
+                }
+                val target = DropTarget(rowId = rowId, insertIndex = targetIdx)
+                if (currentDropTarget != target) currentDropTarget = target
+                return
+            }
+        }
+
+        if (currentDropTarget != null) {
+            currentDropTarget = null
+        }
+    }
+
+    fun endDrag(): DropTarget? {
+        val target = currentDropTarget
+        isDragging = false
+        draggedItem = null
+        draggedFromRowId = null
+        dragPosition = Offset.Zero
+        currentDropTarget = null
+        return target
+    }
+
+    fun cancelDrag() {
+        isDragging = false
+        draggedItem = null
+        draggedFromRowId = null
+        dragPosition = Offset.Zero
+        currentDropTarget = null
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -58,13 +174,55 @@ fun TierListScreen(
     val allAdaptations by viewModel.allAdaptations.collectAsStateWithLifecycle()
     val settings by viewModel.appSettings.collectAsStateWithLifecycle()
 
+    val haptic = LocalHapticFeedback.current
+    val dragState = remember { TierDragDropState() }
+    var activeDraggedItem by remember { mutableStateOf<TierItem?>(null) }
+    var activeDraggedFromRowId by remember { mutableStateOf<String?>(null) }
+
+    val handleStartDrag: (TierItem, String?, Offset) -> Unit = { item, fromRowId, pos ->
+        activeDraggedItem = item
+        activeDraggedFromRowId = fromRowId
+        dragState.startDrag(item, fromRowId, pos)
+    }
+
+    val handleDragDelta: (Offset) -> Unit = { delta ->
+        dragState.dragBy(delta)
+    }
+
+    val handleEndDrag: () -> Unit = {
+        val item = activeDraggedItem
+        val fromRowId = activeDraggedFromRowId
+        val dropTarget = dragState.endDrag()
+        activeDraggedItem = null
+        activeDraggedFromRowId = null
+
+        if (item != null && dropTarget != null) {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            viewModel.moveTierItem(
+                itemId = item.id,
+                fromRowId = fromRowId,
+                toRowId = dropTarget.rowId,
+                targetIndex = dropTarget.insertIndex
+            )
+        }
+    }
+
+    val handleCancelDrag: () -> Unit = {
+        activeDraggedItem = null
+        activeDraggedFromRowId = null
+        dragState.cancelDrag()
+    }
+
     var showPresetMenu by remember { mutableStateOf(false) }
     var showAddRowDialog by remember { mutableStateOf(false) }
     var showAddCustomItemDialog by remember { mutableStateOf(false) }
     var editingRow by remember { mutableStateOf<TierListRow?>(null) }
     var selectedItemForSheet by remember { mutableStateOf<Pair<TierItem, String?>?>(null) } // item, fromRowId
     var itemForCoverEdit by remember { mutableStateOf<TierItem?>(null) }
-    var draggingItem by remember { mutableStateOf<Pair<TierItem, String?>?>(null) } // drag & drop active item
+    
+    val visibleTierRows = remember(tierRows) {
+        tierRows.filter { it.id != "__UNASSIGNED_CUSTOM__" }
+    }
 
     val unassignedItems = remember(tierRows, allBooks, allAdaptations, currentMode) {
         viewModel.getUnassignedTierItems(tierRows, allBooks, allAdaptations, currentMode)
@@ -88,8 +246,8 @@ fun TierListScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = if (settings.uniformHeadersEnabled) "Тир-лист" else "Тир-лист",
-                        style = if (settings.uniformHeadersEnabled) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.headlineMedium,
+                        text = "Тир-лист",
+                        style = if (settings.uniformHeadersEnabled) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -99,7 +257,7 @@ fun TierListScreen(
                             onClick = {
                                 exportTierListToGallery(
                                     context = context,
-                                    tierRows = tierRows,
+                                    tierRows = visibleTierRows,
                                     modeLabel = if (currentMode == LibraryMode.BOOKS) "Книги и новеллы" else "Экранизации"
                                 )
                             },
@@ -138,144 +296,142 @@ fun TierListScreen(
             }
         }
     ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            // Drag active indicator banner
-            if (draggingItem != null) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                // Tier Rows
+                items(visibleTierRows, key = { it.id }) { row ->
+                    TierRowCard(
+                        row = row,
+                        dragState = dragState,
+                        onHeaderClick = { editingRow = row },
+                        onItemClick = { item ->
+                            selectedItemForSheet = item to row.id
+                        },
+                        onItemStartDrag = { item, pos -> handleStartDrag(item, row.id, pos) },
+                        onItemDragDelta = handleDragDelta,
+                        onItemEndDrag = handleEndDrag,
+                        onItemCancelDrag = handleCancelDrag
+                    )
+                }
+
+                // Unassigned Pool Section
                 item {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+                    val isUnassignedHovered = dragState.isDragging && dragState.currentDropTarget?.rowId == null && dragState.currentDropTarget != null
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp)
+                            .onGloballyPositioned { coords ->
+                                dragState.registerUnassigned(coords.boundsInRoot())
+                            },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isUnassignedHovered) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f)
+                            else MaterialTheme.colorScheme.surfaceContainerLow
+                        ),
+                        border = BorderStroke(
+                            width = if (isUnassignedHovered) 2.dp else 1.dp,
+                            color = if (isUnassignedHovered) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)
+                        )
                     ) {
-                        Row(
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.TouchApp, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                                Spacer(modifier = Modifier.width(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Text(
-                                    text = "Перемещение: «${draggingItem!!.first.title}»",
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    text = if (isUnassignedHovered) "Отпустите, чтобы вернуть в неразмещённые" else "Неразмещённые (${unassignedItems.size})",
+                                    style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
+                                    color = if (isUnassignedHovered) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                                 )
+
+                                TextButton(
+                                    onClick = { showAddCustomItemDialog = true },
+                                    modifier = Modifier.testTag("add_custom_tier_item_btn")
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Кастомный", fontWeight = FontWeight.Bold)
+                                }
                             }
-                            IconButton(onClick = { draggingItem = null }, modifier = Modifier.size(24.dp)) {
-                                Icon(Icons.Default.Close, contentDescription = "Отмена", tint = MaterialTheme.colorScheme.onPrimaryContainer)
+
+                            if (unassignedItems.isEmpty()) {
+                                Text(
+                                    text = "Все серии распределены по категориям!",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            } else {
+                                // Flow of unassigned items
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .horizontalScroll(rememberScrollState()),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    unassignedItems.forEach { item ->
+                                        UnassignedItemThumbnail(
+                                            item = item,
+                                            onClick = {
+                                                selectedItemForSheet = item to null
+                                            },
+                                            onStartDrag = { pos -> handleStartDrag(item, null, pos) },
+                                            onDragDelta = handleDragDelta,
+                                            onEndDrag = handleEndDrag,
+                                            onCancelDrag = handleCancelDrag
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
 
-            // Tier Rows
-            items(tierRows, key = { it.id }) { row ->
-                TierRowCard(
-                    row = row,
-                    isDragging = draggingItem != null,
-                    isCurrentSource = draggingItem?.second == row.id,
-                    onHeaderClick = { editingRow = row },
-                    onItemClick = { item -> selectedItemForSheet = item to row.id },
-                    onItemLongClick = { item -> draggingItem = item to row.id },
-                    onDropOnRow = {
-                        draggingItem?.let { (item, fromId) ->
-                            viewModel.moveTierItem(item.id, fromId, row.id)
-                            draggingItem = null
-                        }
-                    }
-                )
-            }
-
-            // Unassigned Pool Section
-            item {
-                Card(
+            // Floating Dragged Item Preview
+            if (dragState.isDragging && dragState.draggedItem != null) {
+                val item = dragState.draggedItem!!
+                val pos = dragState.dragPosition
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                    border = BorderStroke(
-                        width = if (draggingItem != null) 2.dp else 1.dp,
-                        color = if (draggingItem != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)
-                    )
+                        .fillMaxSize()
+                        .zIndex(9999f)
                 ) {
-                    Column(
+                    Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                            .offset {
+                                IntOffset(
+                                    (pos.x - 30.dp.toPx()).roundToInt(),
+                                    (pos.y - 45.dp.toPx()).roundToInt()
+                                )
+                            }
+                            .shadow(16.dp, RoundedCornerShape(10.dp))
+                            .scale(1.12f)
+                            .alpha(0.95f)
+                            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(10.dp))
+                            .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(10.dp))
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Неразмещённые (${unassignedItems.size})",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                if (draggingItem != null && draggingItem?.second != null) {
-                                    FilledTonalButton(
-                                        onClick = {
-                                            draggingItem?.let { (item, fromId) ->
-                                                viewModel.moveTierItem(item.id, fromId, null)
-                                                draggingItem = null
-                                            }
-                                        },
-                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
-                                    ) {
-                                        Text("Сбросить сюда", fontSize = 12.sp)
-                                    }
-                                }
-
-                                TextButton(onClick = { showAddCustomItemDialog = true }) {
-                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Кастомный", fontWeight = FontWeight.Bold)
-                                }
-                            }
-                        }
-
-                        if (unassignedItems.isEmpty()) {
-                            Text(
-                                text = "Все серии распределены по категориям!",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        } else {
-                            // Flow of unassigned items
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                unassignedItems.forEach { item ->
-                                    UnassignedItemThumbnail(
-                                        item = item,
-                                        onClick = { selectedItemForSheet = item to null },
-                                        onLongClick = { draggingItem = item to null }
-                                    )
-                                }
-                            }
-                        }
+                        CoverImage(
+                            coverUrl = item.coverUrl,
+                            title = item.title,
+                            width = 60.dp,
+                            height = 82.dp,
+                            corner = 10.dp
+                        )
                     }
                 }
             }
@@ -532,6 +688,47 @@ fun TierListScreen(
                     }
                 }
 
+                // Reorder in current row (if in a tier row with > 1 item)
+                val currentRow = fromRowId?.let { rId -> visibleTierRows.find { it.id == rId } }
+                val currentIndex = currentRow?.items?.indexOfFirst { it.id == item.id } ?: -1
+                if (currentRow != null && currentIndex != -1 && currentRow.items.size > 1) {
+                    Text("Порядок в ряду:", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FilledTonalButton(
+                            onClick = {
+                                if (currentIndex > 0) {
+                                    viewModel.moveTierItem(item.id, fromRowId, fromRowId, currentIndex - 1)
+                                    selectedItemForSheet = null
+                                }
+                            },
+                            enabled = currentIndex > 0,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Влево", fontSize = 12.sp)
+                        }
+
+                        FilledTonalButton(
+                            onClick = {
+                                if (currentIndex < currentRow.items.size - 1) {
+                                    viewModel.moveTierItem(item.id, fromRowId, fromRowId, currentIndex + 2)
+                                    selectedItemForSheet = null
+                                }
+                            },
+                            enabled = currentIndex < currentRow.items.size - 1,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Вправо", fontSize = 12.sp)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(Icons.Default.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp))
+                        }
+                    }
+                }
+
                 // Action: Move to specific Tier Row
                 Text("Переместить в уровень:", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                 Row(
@@ -540,7 +737,7 @@ fun TierListScreen(
                         .horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    tierRows.forEach { targetRow ->
+                    visibleTierRows.forEach { targetRow ->
                         val isCurrent = fromRowId == targetRow.id
                         Surface(
                             modifier = Modifier
@@ -837,7 +1034,7 @@ fun TierListScreen(
     if (showAddCustomItemDialog) {
         var customTitle by remember { mutableStateOf("") }
         var customCoverUrl by remember { mutableStateOf("") }
-        var targetRowId by remember { mutableStateOf(tierRows.firstOrNull()?.id) }
+        var targetRowId by remember { mutableStateOf<String?>(null) } // Default: Unassigned (null)
 
         AlertDialog(
             onDismissRequest = { showAddCustomItemDialog = false },
@@ -851,20 +1048,77 @@ fun TierListScreen(
                         value = customTitle,
                         onValueChange = { customTitle = it },
                         label = { Text("Название тайтла") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
                     )
                     OutlinedTextField(
                         value = customCoverUrl,
                         onValueChange = { customCoverUrl = it },
                         label = { Text("URL обложки (необязательно)") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
                     )
+
+                    Text("Куда поместить:", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        val isUnassigned = targetRowId == null
+                        Surface(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { targetRowId = null },
+                            color = if (isUnassigned) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
+                            border = BorderStroke(1.dp, if (isUnassigned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)
+                        ) {
+                            Text(
+                                text = "В неразмещённые",
+                                fontWeight = if (isUnassigned) FontWeight.Bold else FontWeight.Normal,
+                                fontSize = 12.sp,
+                                color = if (isUnassigned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            )
+                        }
+
+                        visibleTierRows.forEach { row ->
+                            val isSelected = targetRowId == row.id
+                            Surface(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { targetRowId = row.id },
+                                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
+                                border = BorderStroke(1.dp, Color(row.color))
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(12.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(row.color))
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = row.name,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        if (customTitle.trim().isNotEmpty() && targetRowId != null) {
+                        if (customTitle.trim().isNotEmpty()) {
                             viewModel.addIndependentTierItem(
                                 title = customTitle.trim(),
                                 coverUrl = customCoverUrl.trim().ifEmpty { null },
@@ -888,34 +1142,37 @@ fun TierListScreen(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TierRowCard(
     row: TierListRow,
-    isDragging: Boolean,
-    isCurrentSource: Boolean,
+    dragState: TierDragDropState,
     onHeaderClick: () -> Unit,
     onItemClick: (TierItem) -> Unit,
-    onItemLongClick: (TierItem) -> Unit,
-    onDropOnRow: () -> Unit,
+    onItemStartDrag: (TierItem, Offset) -> Unit,
+    onItemDragDelta: (Offset) -> Unit,
+    onItemEndDrag: () -> Unit,
+    onItemCancelDrag: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isRowHovered = dragState.isDragging && dragState.currentDropTarget?.rowId == row.id
+    val targetInsertIndex = if (isRowHovered) (dragState.currentDropTarget?.insertIndex ?: -1) else -1
+
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .testTag("tier_row_${row.id}")
-            .then(
-                if (isDragging && !isCurrentSource) {
-                    Modifier.clickable { onDropOnRow() }
-                } else Modifier
-            ),
+            .onGloballyPositioned { coords ->
+                dragState.registerRow(row.id, coords.boundsInRoot())
+            }
+            .testTag("tier_row_${row.id}"),
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isDragging && !isCurrentSource) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceContainerLow
+            containerColor = if (isRowHovered) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f)
+            else MaterialTheme.colorScheme.surfaceContainerLow
         ),
         border = BorderStroke(
-            width = if (isDragging && !isCurrentSource) 2.dp else 1.dp,
-            color = if (isDragging && !isCurrentSource) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)
+            width = if (isRowHovered) 2.dp else 1.dp,
+            color = if (isRowHovered) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)
         )
     ) {
         Row(
@@ -954,19 +1211,40 @@ fun TierRowCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (row.items.isEmpty()) {
-                    Text(
-                        text = if (isDragging && !isCurrentSource) "Нажмите сюда, чтобы переместить" else "Нажмите на тайтл для добавления",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (isDragging && !isCurrentSource) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.padding(horizontal = 8.dp)
-                    )
+                    if (isRowHovered) {
+                        InsertionSlotIndicator(
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 4.dp)
+                        )
+                    } else {
+                        Text(
+                            text = "Перетащите или нажмите на тайтл, чтобы поместить сюда",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier.padding(horizontal = 8.dp)
+                        )
+                    }
                 } else {
-                    row.items.forEach { item ->
+                    if (isRowHovered && targetInsertIndex == 0) {
+                        InsertionSlotIndicator(color = MaterialTheme.colorScheme.primary)
+                    }
+
+                    row.items.forEachIndexed { index, item ->
                         TierItemThumbnail(
                             item = item,
                             onClick = { onItemClick(item) },
-                            onLongClick = { onItemLongClick(item) }
+                            onStartDrag = { pos -> onItemStartDrag(item, pos) },
+                            onDragDelta = onItemDragDelta,
+                            onEndDrag = onItemEndDrag,
+                            onCancelDrag = onItemCancelDrag,
+                            modifier = Modifier.onGloballyPositioned { coords ->
+                                dragState.registerItem(row.id, index, coords.boundsInRoot())
+                            }
                         )
+
+                        if (isRowHovered && targetInsertIndex == index + 1) {
+                            InsertionSlotIndicator(color = MaterialTheme.colorScheme.primary)
+                        }
                     }
                 }
             }
@@ -979,16 +1257,38 @@ fun TierRowCard(
 fun TierItemThumbnail(
     item: TierItem,
     onClick: () -> Unit,
-    onLongClick: () -> Unit,
+    onStartDrag: (Offset) -> Unit,
+    onDragDelta: (Offset) -> Unit,
+    onEndDrag: () -> Unit,
+    onCancelDrag: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val haptic = LocalHapticFeedback.current
+    var itemPosition by remember { mutableStateOf(Offset.Zero) }
+
     Column(
         modifier = modifier
             .width(60.dp)
-            .combinedClickable(
-                onClick = { onClick() },
-                onLongClick = { onLongClick() }
-            )
+            .clip(RoundedCornerShape(8.dp))
+            .onGloballyPositioned { coords ->
+                itemPosition = coords.positionInRoot()
+            }
+            .pointerInput(item.id) {
+                detectDragGesturesAfterLongPress(
+                    onDragStart = { localOffset ->
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onStartDrag(itemPosition + localOffset)
+                    },
+                    onDrag = { change, dragAmount ->
+                        change.consume()
+                        onDragDelta(dragAmount)
+                    },
+                    onDragEnd = onEndDrag,
+                    onDragCancel = onCancelDrag
+                )
+            }
+            .clickable { onClick() }
+            .padding(2.dp)
             .testTag("tier_item_${item.id}"),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -1016,18 +1316,39 @@ fun TierItemThumbnail(
 fun UnassignedItemThumbnail(
     item: TierItem,
     onClick: () -> Unit,
-    onLongClick: () -> Unit,
+    onStartDrag: (Offset) -> Unit,
+    onDragDelta: (Offset) -> Unit,
+    onEndDrag: () -> Unit,
+    onCancelDrag: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val haptic = LocalHapticFeedback.current
+    var itemPosition by remember { mutableStateOf(Offset.Zero) }
+
     Column(
         modifier = modifier
             .width(64.dp)
             .clip(RoundedCornerShape(8.dp))
-            .combinedClickable(
-                onClick = { onClick() },
-                onLongClick = { onLongClick() }
-            )
-            .padding(4.dp),
+            .onGloballyPositioned { coords ->
+                itemPosition = coords.positionInRoot()
+            }
+            .pointerInput(item.id) {
+                detectDragGesturesAfterLongPress(
+                    onDragStart = { localOffset ->
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onStartDrag(itemPosition + localOffset)
+                    },
+                    onDrag = { change, dragAmount ->
+                        change.consume()
+                        onDragDelta(dragAmount)
+                    },
+                    onDragEnd = onEndDrag,
+                    onDragCancel = onCancelDrag
+                )
+            }
+            .clickable { onClick() }
+            .padding(4.dp)
+            .testTag("unassigned_item_${item.id}"),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         CoverImage(
@@ -1046,6 +1367,33 @@ fun UnassignedItemThumbnail(
             overflow = TextOverflow.Ellipsis,
             color = MaterialTheme.colorScheme.onSurface
         )
+    }
+}
+
+@Composable
+fun InsertionSlotIndicator(
+    color: Color = MaterialTheme.colorScheme.primary,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .width(28.dp)
+            .height(76.dp),
+        shape = RoundedCornerShape(8.dp),
+        color = color.copy(alpha = 0.2f),
+        border = BorderStroke(2.dp, color)
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.Add,
+                contentDescription = null,
+                tint = color,
+                modifier = Modifier.size(18.dp)
+            )
+        }
     }
 }
 

@@ -34,6 +34,33 @@ fun AddEditAdaptationScreen(
     modifier: Modifier = Modifier
 ) {
     val settings by viewModel.appSettings.collectAsStateWithLifecycle()
+
+    if (settings.updatedEditorEnabled) {
+        ModernAddEditAdaptationScreen(
+            existingAdaptation = existingAdaptation,
+            viewModel = viewModel,
+            onDismiss = onDismiss,
+            modifier = modifier
+        )
+    } else {
+        ClassicAddEditAdaptationScreen(
+            existingAdaptation = existingAdaptation,
+            viewModel = viewModel,
+            onDismiss = onDismiss,
+            modifier = modifier
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+fun ClassicAddEditAdaptationScreen(
+    existingAdaptation: Adaptation?,
+    viewModel: ReadTrackerViewModel,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val settings by viewModel.appSettings.collectAsStateWithLifecycle()
     val knownGenres by viewModel.allKnownGenres.collectAsStateWithLifecycle()
 
     var title by remember { mutableStateOf(existingAdaptation?.title ?: "") }

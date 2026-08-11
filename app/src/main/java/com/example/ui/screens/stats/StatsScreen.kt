@@ -72,7 +72,8 @@ fun StatsScreen(
     var showEditGoalsDialog by remember { mutableStateOf(false) }
 
     // Computed Book Statistics
-    val totalBooksRead = allBooks.count { it.status == TitleStatus.COMPLETED }
+    val totalSeriesCompleted = allBooks.count { it.status == TitleStatus.COMPLETED && it.format != TitleFormat.SINGLE }
+    val totalSinglesCompleted = allBooks.count { it.status == TitleStatus.COMPLETED && it.format == TitleFormat.SINGLE }
     val totalBooksInProgress = allBooks.count { it.status == TitleStatus.READING }
     val totalVolumesRead = allBooks.sumOf { it.volumes }
     val totalChaptersRead = allBooks.sumOf { it.chapters }
@@ -224,10 +225,10 @@ fun StatsScreen(
                         )
 
                         // 3. Series Goal Progress
-                        val seriesProgress = if (settings.seriesTarget > 0) (totalBooksRead.toFloat() / settings.seriesTarget).coerceIn(0f, 1f) else 0f
+                        val seriesProgress = if (settings.seriesTarget > 0) (totalSeriesCompleted.toFloat() / settings.seriesTarget).coerceIn(0f, 1f) else 0f
                         GoalProgressBar(
                             title = "Завершить серий",
-                            current = "$totalBooksRead",
+                            current = "$totalSeriesCompleted",
                             target = "${settings.seriesTarget}",
                             progress = seriesProgress,
                             color = StarGold
@@ -334,8 +335,19 @@ fun StatsScreen(
                                 modifier = mod,
                                 icon = Icons.Default.CheckCircle,
                                 title = "Завершено серий",
-                                value = "$totalBooksRead",
+                                value = "$totalSeriesCompleted",
                                 color = StarGold
+                            )
+                        }
+                    }
+                    if (totalSinglesCompleted > 0) {
+                        add { mod ->
+                            BentoStatCard(
+                                modifier = mod,
+                                icon = Icons.Default.Book,
+                                title = "Синглов завершено",
+                                value = "$totalSinglesCompleted",
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                     }
