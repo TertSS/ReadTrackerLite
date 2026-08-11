@@ -567,118 +567,207 @@ fun ModernAddEditTitleScreen(
                                             singleLine = true
                                         )
                                     }
-                                }
 
-                                TitleFormat.HYBRID -> {
-                                    Text("Тома", fontWeight = FontWeight.SemiBold)
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                                     ) {
                                         OutlinedTextField(
-                                            value = volumes,
-                                            onValueChange = { volumes = it.filter { ch -> ch.isDigit() } },
-                                            label = { Text("Прочитано томов") },
+                                            value = words,
+                                            onValueChange = { words = it.filter { ch -> ch.isDigit() } },
+                                            label = { Text("Прочитано слов") },
                                             modifier = Modifier.weight(1f),
                                             singleLine = true
                                         )
                                         OutlinedTextField(
-                                            value = totalVolumes,
-                                            onValueChange = { totalVolumes = it.filter { ch -> ch.isDigit() } },
-                                            label = { Text("Всего томов") },
-                                            modifier = Modifier.weight(1f),
-                                            singleLine = true
-                                        )
-                                    }
-
-                                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-
-                                    Text("Веб-главы", fontWeight = FontWeight.SemiBold)
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                    ) {
-                                        OutlinedTextField(
-                                            value = chapters,
-                                            onValueChange = { chapters = it.filter { ch -> ch.isDigit() } },
-                                            label = { Text("Прочитано глав") },
-                                            modifier = Modifier.weight(1f),
-                                            singleLine = true
-                                        )
-                                        OutlinedTextField(
-                                            value = totalChapters,
-                                            onValueChange = { totalChapters = it.filter { ch -> ch.isDigit() } },
-                                            label = { Text("Всего веб-глав") },
+                                            value = totalWords,
+                                            onValueChange = { totalWords = it.filter { ch -> ch.isDigit() } },
+                                            label = { Text("Всего слов (0 - ?)") },
                                             modifier = Modifier.weight(1f),
                                             singleLine = true
                                         )
                                     }
                                 }
 
-                                TitleFormat.SERIES, TitleFormat.NOVEL, TitleFormat.SINGLE -> {
-                                    Text("Способ учёта томов", fontWeight = FontWeight.SemiBold)
-                                    
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        FilterChip(
-                                            selected = !hasDetailedVolumes,
-                                            onClick = { hasDetailedVolumes = false },
-                                            label = { Text("Общий счётчик") },
-                                            leadingIcon = if (!hasDetailedVolumes) {
-                                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                                            } else null,
-                                            modifier = Modifier.weight(1f)
-                                        )
+                                TitleFormat.SERIES, TitleFormat.NOVEL, TitleFormat.SINGLE, TitleFormat.HYBRID -> {
+                                    Text("Способ учёта", fontWeight = FontWeight.SemiBold)
 
-                                        FilterChip(
-                                            selected = hasDetailedVolumes,
-                                            onClick = {
-                                                hasDetailedVolumes = true
-                                                if (detailedVolumes.isEmpty()) {
-                                                    val curVols = volumes.toIntOrNull() ?: 1
-                                                    val count = if (curVols > 0) curVols else 1
-                                                    val defaultWordsPerVol = if (words.toLongOrNull() ?: 0L > 0) (words.toLong() / count) else 60000L
-                                                    detailedVolumes = (1..count).map { num ->
-                                                        VolumeEntry(
-                                                            volumeNumber = num,
-                                                            wordCount = defaultWordsPerVol,
-                                                            isRead = true
+                                    // Equal-sized Segmented Control for Accounting Mode
+                                    Surface(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp),
+                                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        tonalElevation = 1.dp
+                                    ) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(4.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            // Segment 1: Общий счётчик
+                                            Surface(
+                                                selected = !hasDetailedVolumes,
+                                                onClick = { hasDetailedVolumes = false },
+                                                shape = RoundedCornerShape(8.dp),
+                                                color = if (!hasDetailedVolumes) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                                contentColor = if (!hasDetailedVolumes) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .height(44.dp)
+                                            ) {
+                                                Box(
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Row(
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        horizontalArrangement = Arrangement.Center,
+                                                        modifier = Modifier.padding(horizontal = 6.dp)
+                                                    ) {
+                                                        if (!hasDetailedVolumes) {
+                                                            Icon(
+                                                                imageVector = Icons.Default.Check,
+                                                                contentDescription = null,
+                                                                modifier = Modifier.size(16.dp)
+                                                            )
+                                                            Spacer(modifier = Modifier.width(4.dp))
+                                                        }
+                                                        Text(
+                                                            text = "Общий счётчик",
+                                                            style = MaterialTheme.typography.labelMedium,
+                                                            fontWeight = if (!hasDetailedVolumes) FontWeight.Bold else FontWeight.Medium,
+                                                            textAlign = TextAlign.Center,
+                                                            maxLines = 1
                                                         )
                                                     }
                                                 }
-                                            },
-                                            label = { Text("По томам (со словами)") },
-                                            leadingIcon = if (hasDetailedVolumes) {
-                                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                                            } else null,
-                                            modifier = Modifier.weight(1f)
-                                        )
+                                            }
+
+                                            // Segment 2: По томам (со словами)
+                                            Surface(
+                                                selected = hasDetailedVolumes,
+                                                onClick = {
+                                                    hasDetailedVolumes = true
+                                                    if (detailedVolumes.isEmpty()) {
+                                                        val curVols = volumes.toIntOrNull() ?: 1
+                                                        val count = if (curVols > 0) curVols else 1
+                                                        val defaultWordsPerVol = if ((words.toLongOrNull() ?: 0L) > 0) ((words.toLong()) / count) else 60000L
+                                                        detailedVolumes = (1..count).map { num ->
+                                                            VolumeEntry(
+                                                                volumeNumber = num,
+                                                                wordCount = defaultWordsPerVol,
+                                                                isRead = true
+                                                            )
+                                                        }
+                                                    }
+                                                },
+                                                shape = RoundedCornerShape(8.dp),
+                                                color = if (hasDetailedVolumes) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                                contentColor = if (hasDetailedVolumes) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .height(44.dp)
+                                            ) {
+                                                Box(
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Row(
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        horizontalArrangement = Arrangement.Center,
+                                                        modifier = Modifier.padding(horizontal = 6.dp)
+                                                    ) {
+                                                        if (hasDetailedVolumes) {
+                                                            Icon(
+                                                                imageVector = Icons.Default.Check,
+                                                                contentDescription = null,
+                                                                modifier = Modifier.size(16.dp)
+                                                            )
+                                                            Spacer(modifier = Modifier.width(4.dp))
+                                                        }
+                                                        Text(
+                                                            text = "По томам (со словами)",
+                                                            style = MaterialTheme.typography.labelMedium,
+                                                            fontWeight = if (hasDetailedVolumes) FontWeight.Bold else FontWeight.Medium,
+                                                            textAlign = TextAlign.Center,
+                                                            maxLines = 1
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
 
                                     if (!hasDetailedVolumes) {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                        ) {
-                                            OutlinedTextField(
-                                                value = volumes,
-                                                onValueChange = { volumes = it.filter { ch -> ch.isDigit() } },
-                                                label = { Text("Прочитано томов") },
-                                                modifier = Modifier.weight(1f),
-                                                singleLine = true
-                                            )
-                                            OutlinedTextField(
-                                                value = totalVolumes,
-                                                onValueChange = { totalVolumes = it.filter { ch -> ch.isDigit() } },
-                                                label = { Text("Всего томов (0 - ?)") },
-                                                modifier = Modifier.weight(1f),
-                                                singleLine = true
-                                            )
+                                        // Mode 1: General Counter (Volumes + Words)
+                                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                            ) {
+                                                OutlinedTextField(
+                                                    value = volumes,
+                                                    onValueChange = { volumes = it.filter { ch -> ch.isDigit() } },
+                                                    label = { Text("Прочитано томов") },
+                                                    modifier = Modifier.weight(1f),
+                                                    singleLine = true
+                                                )
+                                                OutlinedTextField(
+                                                    value = totalVolumes,
+                                                    onValueChange = { totalVolumes = it.filter { ch -> ch.isDigit() } },
+                                                    label = { Text("Всего томов (0 - ?)") },
+                                                    modifier = Modifier.weight(1f),
+                                                    singleLine = true
+                                                )
+                                            }
+
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                            ) {
+                                                OutlinedTextField(
+                                                    value = words,
+                                                    onValueChange = { words = it.filter { ch -> ch.isDigit() } },
+                                                    label = { Text("Прочитано слов") },
+                                                    modifier = Modifier.weight(1f),
+                                                    singleLine = true
+                                                )
+                                                OutlinedTextField(
+                                                    value = totalWords,
+                                                    onValueChange = { totalWords = it.filter { ch -> ch.isDigit() } },
+                                                    label = { Text("Всего слов (0 - ?)") },
+                                                    modifier = Modifier.weight(1f),
+                                                    singleLine = true
+                                                )
+                                            }
+
+                                            if (format == TitleFormat.HYBRID) {
+                                                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                                                Text("Веб-главы", fontWeight = FontWeight.SemiBold)
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                                ) {
+                                                    OutlinedTextField(
+                                                        value = chapters,
+                                                        onValueChange = { chapters = it.filter { ch -> ch.isDigit() } },
+                                                        label = { Text("Прочитано глав") },
+                                                        modifier = Modifier.weight(1f),
+                                                        singleLine = true
+                                                    )
+                                                    OutlinedTextField(
+                                                        value = totalChapters,
+                                                        onValueChange = { totalChapters = it.filter { ch -> ch.isDigit() } },
+                                                        label = { Text("Всего веб-глав") },
+                                                        modifier = Modifier.weight(1f),
+                                                        singleLine = true
+                                                    )
+                                                }
+                                            }
                                         }
                                     } else {
-                                        // Summary stats for detailed volumes
+                                        // Mode 2: Detailed by Volumes (Summary stats + individual volume cards)
                                         val totalVolsCount = detailedVolumes.size
                                         val readVolsCount = detailedVolumes.count { it.isRead }
                                         val totalWordsSum = detailedVolumes.sumOf { it.wordCount }
@@ -820,32 +909,31 @@ fun ModernAddEditTitleScreen(
                                                 Text("Добавить следующий том (${detailedVolumes.size + 1})")
                                             }
                                         }
-                                    }
-                                }
-                            }
 
-                            // Words counter (only in general mode)
-                            if (!hasDetailedVolumes && format != TitleFormat.VISUAL_NOVEL && !settings.hideWordsEquivalent) {
-                                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                                Text("Количество слов", fontWeight = FontWeight.SemiBold)
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    OutlinedTextField(
-                                        value = words,
-                                        onValueChange = { words = it.filter { ch -> ch.isDigit() } },
-                                        label = { Text("Прочитано слов") },
-                                        modifier = Modifier.weight(1f),
-                                        singleLine = true
-                                    )
-                                    OutlinedTextField(
-                                        value = totalWords,
-                                        onValueChange = { totalWords = it.filter { ch -> ch.isDigit() } },
-                                        label = { Text("Всего слов") },
-                                        modifier = Modifier.weight(1f),
-                                        singleLine = true
-                                    )
+                                        if (format == TitleFormat.HYBRID) {
+                                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                                            Text("Веб-главы", fontWeight = FontWeight.SemiBold)
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                            ) {
+                                                OutlinedTextField(
+                                                    value = chapters,
+                                                    onValueChange = { chapters = it.filter { ch -> ch.isDigit() } },
+                                                    label = { Text("Прочитано глав") },
+                                                    modifier = Modifier.weight(1f),
+                                                    singleLine = true
+                                                )
+                                                OutlinedTextField(
+                                                    value = totalChapters,
+                                                    onValueChange = { totalChapters = it.filter { ch -> ch.isDigit() } },
+                                                    label = { Text("Всего веб-глав") },
+                                                    modifier = Modifier.weight(1f),
+                                                    singleLine = true
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
