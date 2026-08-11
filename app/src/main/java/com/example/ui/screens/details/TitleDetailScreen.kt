@@ -57,7 +57,6 @@ fun TitleDetailScreen(
     var isSynopsisExpanded by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showAddReviewDialog by remember { mutableStateOf(false) }
-    var showBookmarkDialog by remember { mutableStateOf(false) }
     var reviewToDelete by remember { mutableStateOf<Review?>(null) }
 
     if (book == null) {
@@ -219,67 +218,34 @@ fun TitleDetailScreen(
                 }
 
                 // Bookmark Banner
-                if (settings.bookmarksEnabled) {
+                if (settings.bookmarksEnabled && book.bookmark.isNotEmpty()) {
                     Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { showBookmarkDialog = true },
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (book.bookmark.isNotBlank())
-                                MaterialTheme.colorScheme.surfaceContainerHigh
-                            else
-                                MaterialTheme.colorScheme.surfaceContainerLow
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(
-                            1.dp,
-                            if (book.bookmark.isNotBlank())
-                                MaterialTheme.colorScheme.tertiary.copy(alpha = 0.35f)
-                            else
-                                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)
-                        )
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Bookmark,
-                                    contentDescription = "Закладка",
-                                    tint = MaterialTheme.colorScheme.tertiary,
-                                    modifier = Modifier.size(22.dp)
+                            Icon(
+                                imageVector = Icons.Default.Bookmark,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.tertiary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "Закладка",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Column {
-                                    Text(
-                                        text = "Закладка (где остановились)",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Text(
-                                        text = if (book.bookmark.isNotBlank()) book.bookmark else "Нажмите, чтобы указать главу/том",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = if (book.bookmark.isNotBlank()) FontWeight.SemiBold else FontWeight.Normal,
-                                        color = if (book.bookmark.isNotBlank()) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                                    )
-                                }
-                            }
-                            IconButton(
-                                onClick = { showBookmarkDialog = true },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Edit,
-                                    contentDescription = "Изменить закладку",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(18.dp)
+                                Text(
+                                    text = book.bookmark,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
                         }
@@ -447,7 +413,7 @@ fun TitleDetailScreen(
                                 .padding(16.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            val scoreStr = if (book.rating > 0f) Formatters.formatRating(book.rating, settings.ratingScale, settings.allowDecimalRating) else "Без оценки"
+                            val scoreStr = if (book.rating > 0f) Formatters.formatRating(book.rating, settings.ratingScale) else "Без оценки"
                             Text(
                                 text = "ОЦЕНКА ($scoreStr)",
                                 style = MaterialTheme.typography.labelSmall,
@@ -459,7 +425,6 @@ fun TitleDetailScreen(
                             StarRatingBar(
                                 rating = book.rating,
                                 scale = settings.ratingScale,
-                                allowDecimal = settings.allowDecimalRating,
                                 editable = true,
                                 onRatingChanged = { newRating ->
                                     viewModel.saveBook(book.copy(rating = newRating))
@@ -689,18 +654,6 @@ fun TitleDetailScreen(
                 viewModel.addReview(newReview)
                 showAddReviewDialog = false
             }
-        )
-    }
-
-    // Quick Bookmark Dialog
-    if (showBookmarkDialog) {
-        QuickBookmarkDialog(
-            initialValue = book.bookmark,
-            title = book.title,
-            onSave = { newBookmark ->
-                viewModel.updateBookBookmark(book, newBookmark)
-            },
-            onDismiss = { showBookmarkDialog = false }
         )
     }
 }

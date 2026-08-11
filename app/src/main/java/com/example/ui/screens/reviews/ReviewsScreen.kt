@@ -60,9 +60,9 @@ fun ReviewsScreen(
         allReviews.filter { it.targetId in existingTargetIds }
     }
 
-    // Library titles enabled for reviews section
+    // All library titles available for reviewing
     val titlesInReviews = remember(allBooks, allAdaptations) {
-        val books = allBooks.filter { it.showInReviews }.map {
+        val books = allBooks.map {
             ReviewTitleItem(
                 id = it.id,
                 title = it.title,
@@ -75,7 +75,7 @@ fun ReviewsScreen(
                 bookFormat = it.format
             )
         }
-        val adaps = allAdaptations.filter { it.showInReviews }.map {
+        val adaps = allAdaptations.map {
             ReviewTitleItem(
                 id = it.id,
                 title = it.title,
@@ -284,14 +284,14 @@ fun ReviewsScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "Нет добавленных произведений",
+                            text = "В библиотеке пока нет произведений",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Чтобы произведение отображалось здесь, включите переключатель «Отображать в отзывах» при добавлении или редактировании тайтла.",
+                            text = "Добавьте книгу или экранизацию во вкладке «Библиотека», чтобы писать и просматривать отзывы.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -687,6 +687,19 @@ fun TitleReviewsView(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
+                Button(
+                    onClick = onAddReview,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    ),
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Написать отзыв", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                }
             }
         }
 

@@ -52,7 +52,6 @@ fun AdaptationDetailScreen(
 
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showAddReviewDialog by remember { mutableStateOf(false) }
-    var showBookmarkDialog by remember { mutableStateOf(false) }
     var reviewToDelete by remember { mutableStateOf<Review?>(null) }
     var expandedDetailSeasons by remember { mutableStateOf(setOf<Int>()) }
 
@@ -186,68 +185,21 @@ fun AdaptationDetailScreen(
                 }
 
                 // Bookmark Banner
-                if (settings.bookmarksEnabled) {
+                if (settings.bookmarksEnabled && adaptation.bookmark.isNotEmpty()) {
                     Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { showBookmarkDialog = true },
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (adaptation.bookmark.isNotBlank())
-                                MaterialTheme.colorScheme.surfaceContainerHigh
-                            else
-                                MaterialTheme.colorScheme.surfaceContainerLow
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(
-                            1.dp,
-                            if (adaptation.bookmark.isNotBlank())
-                                MaterialTheme.colorScheme.tertiary.copy(alpha = 0.35f)
-                            else
-                                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)
-                        )
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Bookmark,
-                                    contentDescription = "Закладка",
-                                    tint = MaterialTheme.colorScheme.tertiary,
-                                    modifier = Modifier.size(22.dp)
-                                )
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Column {
-                                    Text(
-                                        text = "Закладка (где остановились)",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Text(
-                                        text = if (adaptation.bookmark.isNotBlank()) adaptation.bookmark else "Нажмите, чтобы указать серию/сезон",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = if (adaptation.bookmark.isNotBlank()) FontWeight.SemiBold else FontWeight.Normal,
-                                        color = if (adaptation.bookmark.isNotBlank()) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                                    )
-                                }
-                            }
-                            IconButton(
-                                onClick = { showBookmarkDialog = true },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Edit,
-                                    contentDescription = "Изменить закладку",
-                                    tint = MaterialTheme.colorScheme.secondary,
-                                    modifier = Modifier.size(18.dp)
-                                )
+                            Icon(Icons.Default.Bookmark, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(text = "Закладка", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(text = adaptation.bookmark, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                             }
                         }
                     }
@@ -376,7 +328,7 @@ fun AdaptationDetailScreen(
                                 .padding(16.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            val scoreStr = if (adaptation.rating > 0f) Formatters.formatRating(adaptation.rating, settings.ratingScale, settings.allowDecimalRating) else "Без оценки"
+                            val scoreStr = if (adaptation.rating > 0f) Formatters.formatRating(adaptation.rating, settings.ratingScale) else "Без оценки"
                             Text(
                                 text = "ОЦЕНКА ($scoreStr)",
                                 style = MaterialTheme.typography.labelSmall,
@@ -388,7 +340,6 @@ fun AdaptationDetailScreen(
                             StarRatingBar(
                                 rating = adaptation.rating,
                                 scale = settings.ratingScale,
-                                allowDecimal = settings.allowDecimalRating,
                                 editable = true,
                                 onRatingChanged = { newRating ->
                                     viewModel.saveAdaptation(adaptation.copy(rating = newRating))
@@ -700,18 +651,6 @@ fun AdaptationDetailScreen(
                 viewModel.addReview(newReview)
                 showAddReviewDialog = false
             }
-        )
-    }
-
-    // Quick Bookmark Dialog
-    if (showBookmarkDialog) {
-        QuickBookmarkDialog(
-            initialValue = adaptation.bookmark,
-            title = adaptation.title,
-            onSave = { newBookmark ->
-                viewModel.updateAdaptationBookmark(adaptation, newBookmark)
-            },
-            onDismiss = { showBookmarkDialog = false }
         )
     }
 }

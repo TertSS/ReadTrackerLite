@@ -713,7 +713,7 @@ fun AddEditAdaptationScreen(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                text = "Моя оценка: ${Formatters.formatRating(rating, settings.ratingScale, settings.allowDecimalRating)}",
+                                text = "Моя оценка: ${Formatters.formatRating(rating, settings.ratingScale)}",
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -721,7 +721,6 @@ fun AddEditAdaptationScreen(
                             StarRatingBar(
                                 rating = rating,
                                 scale = settings.ratingScale,
-                                allowDecimal = settings.allowDecimalRating,
                                 editable = true,
                                 onRatingChanged = { rating = it }
                             )

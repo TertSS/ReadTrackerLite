@@ -72,8 +72,6 @@ fun StatsScreen(
     var showEditGoalsDialog by remember { mutableStateOf(false) }
 
     // Computed Book Statistics
-    val completedSingles = allBooks.count { it.status == TitleStatus.COMPLETED && (it.format == TitleFormat.SINGLE || it.totalVolumes == 1) }
-    val completedSeries = allBooks.count { it.status == TitleStatus.COMPLETED && it.format != TitleFormat.SINGLE && it.totalVolumes != 1 }
     val totalBooksRead = allBooks.count { it.status == TitleStatus.COMPLETED }
     val totalBooksInProgress = allBooks.count { it.status == TitleStatus.READING }
     val totalVolumesRead = allBooks.sumOf { it.volumes }
@@ -226,33 +224,23 @@ fun StatsScreen(
                         )
 
                         // 3. Series Goal Progress
-                        val seriesProgress = if (settings.seriesTarget > 0) (completedSeries.toFloat() / settings.seriesTarget).coerceIn(0f, 1f) else 0f
+                        val seriesProgress = if (settings.seriesTarget > 0) (totalBooksRead.toFloat() / settings.seriesTarget).coerceIn(0f, 1f) else 0f
                         GoalProgressBar(
                             title = "Завершить серий",
-                            current = "$completedSeries",
+                            current = "$totalBooksRead",
                             target = "${settings.seriesTarget}",
                             progress = seriesProgress,
                             color = StarGold
                         )
 
-                        // 4. Singles Goal Progress
-                        val singlesProgress = if (settings.singlesTarget > 0) (completedSingles.toFloat() / settings.singlesTarget).coerceIn(0f, 1f) else 0f
-                        GoalProgressBar(
-                            title = "Завершить синглов",
-                            current = "$completedSingles",
-                            target = "${settings.singlesTarget}",
-                            progress = singlesProgress,
-                            color = MaterialTheme.colorScheme.tertiary
-                        )
-
-                        // 5. Web Novels Goal Progress
+                        // 4. Web Novels Goal Progress
                         val webProgress = if (settings.webTarget > 0) (totalCompletedWebNovels.toFloat() / settings.webTarget).coerceIn(0f, 1f) else 0f
                         GoalProgressBar(
                             title = "Завершить веб",
                             current = "$totalCompletedWebNovels",
                             target = "${settings.webTarget}",
                             progress = webProgress,
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.tertiary
                         )
                     }
                 }
@@ -338,17 +326,6 @@ fun StatsScreen(
             // Bento Metric Grid: Books
             if (activeTab == "ALL" || activeTab == "BOOKS") {
                 val bookCards = buildList<@Composable (Modifier) -> Unit> {
-                    if (settings.statsShowTitlesCompleted) {
-                        add { mod ->
-                            BentoStatCard(
-                                modifier = mod,
-                                icon = Icons.Default.CheckCircle,
-                                title = "Серий прочитано",
-                                value = "$completedSeries",
-                                color = StarGold
-                            )
-                        }
-                    }
                     if (settings.statsShowVolumes) {
                         add { mod ->
                             BentoStatCard(
@@ -360,14 +337,14 @@ fun StatsScreen(
                             )
                         }
                     }
-                    if (settings.statsShowSinglesCompleted) {
+                    if (settings.statsShowTitlesCompleted) {
                         add { mod ->
                             BentoStatCard(
                                 modifier = mod,
-                                icon = Icons.Default.BookmarkBorder,
-                                title = "Синглов прочитано",
-                                value = "$completedSingles",
-                                color = MaterialTheme.colorScheme.primary
+                                icon = Icons.Default.CheckCircle,
+                                title = "Завершено серий",
+                                value = "$totalBooksRead",
+                                color = StarGold
                             )
                         }
                     }
@@ -376,7 +353,7 @@ fun StatsScreen(
                             BentoStatCard(
                                 modifier = mod,
                                 icon = Icons.AutoMirrored.Filled.MenuBook,
-                                title = "Веб-новелл прочитано",
+                                title = "Завершено веб",
                                 value = "$totalCompletedWebNovels",
                                 color = MaterialTheme.colorScheme.tertiary
                             )
@@ -655,7 +632,6 @@ fun StatsScreen(
         var goalWordsInput by remember { mutableStateOf(settings.wordsTarget.toString()) }
         var goalVolumesInput by remember { mutableStateOf(settings.volumesTarget.toString()) }
         var goalSeriesInput by remember { mutableStateOf(settings.seriesTarget.toString()) }
-        var goalSinglesInput by remember { mutableStateOf(settings.singlesTarget.toString()) }
         var goalWebInput by remember { mutableStateOf(settings.webTarget.toString()) }
 
         AlertDialog(
@@ -691,12 +667,6 @@ fun StatsScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
                     OutlinedTextField(
-                        value = goalSinglesInput,
-                        onValueChange = { goalSinglesInput = it.filter { ch -> ch.isDigit() } },
-                        label = { Text("Цель по синглам (например, 10)") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
                         value = goalWebInput,
                         onValueChange = { goalWebInput = it.filter { ch -> ch.isDigit() } },
                         label = { Text("Цель по веб-новеллам (например, 10)") },
@@ -710,14 +680,12 @@ fun StatsScreen(
                         val w = goalWordsInput.toLongOrNull() ?: 10_000_000L
                         val v = goalVolumesInput.toIntOrNull() ?: 50
                         val s = goalSeriesInput.toIntOrNull() ?: 15
-                        val sing = goalSinglesInput.toIntOrNull() ?: 10
                         val web = goalWebInput.toIntOrNull() ?: 10
                         viewModel.updateAppSettings(
                             settings.copy(
                                 wordsTarget = w,
                                 volumesTarget = v,
                                 seriesTarget = s,
-                                singlesTarget = sing,
                                 webTarget = web
                             )
                         )

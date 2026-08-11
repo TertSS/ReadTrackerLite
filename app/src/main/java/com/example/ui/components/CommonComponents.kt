@@ -13,7 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -249,103 +249,57 @@ fun FormatBadge(
 fun StarRatingBar(
     rating: Float, // 0..10
     scale: RatingScale = RatingScale.STARS_10,
-    allowDecimal: Boolean = false,
     editable: Boolean = false,
     onRatingChanged: ((Float) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val maxCount = if (scale == RatingScale.STARS_5) 5 else 10
     val effectiveRating = if (scale == RatingScale.STARS_5) rating / 2f else rating
-    val maxVal = if (scale == RatingScale.STARS_5) 5f else 10f
 
-    Column(
+    Row(
         modifier = modifier.testTag("star_rating_bar"),
-        horizontalAlignment = Alignment.CenterHorizontally
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            val starBtnSize = if (editable) (if (maxCount == 10) 28.dp else 36.dp) else 18.dp
-            val starIconSize = if (editable) (if (maxCount == 10) 22.dp else 28.dp) else 15.dp
+        for (i in 1..maxCount) {
+            val isFilled = i <= Math.round(effectiveRating)
+            val icon = if (isFilled) Icons.Default.Star else Icons.Default.StarBorder
+            val tint = if (isFilled) StarGold else MaterialTheme.colorScheme.surfaceContainerHighest
 
-            for (i in 1..maxCount) {
-                val isFilled = i <= effectiveRating + 0.25f
-                val isHalf = !isFilled && i <= effectiveRating + 0.75f
-                val icon = when {
-                    isFilled -> Icons.Default.Star
-                    isHalf -> Icons.Default.StarHalf
-                    else -> Icons.Default.StarBorder
-                }
-                val tint = if (isFilled || isHalf) StarGold else MaterialTheme.colorScheme.surfaceContainerHighest
-
-                IconButton(
-                    onClick = {
-                        if (editable && onRatingChanged != null) {
-                            val newRating = if (scale == RatingScale.STARS_5) i * 2f else i.toFloat()
-                            if (effectiveRating == i.toFloat()) {
-                                onRatingChanged(0f) // Reset
-                            } else {
-                                onRatingChanged(newRating)
-                            }
+            IconButton(
+                onClick = {
+                    if (editable && onRatingChanged != null) {
+                        val newRating = if (scale == RatingScale.STARS_5) i * 2f else i.toFloat()
+                        if (effectiveRating == i.toFloat()) {
+                            onRatingChanged(0f) // Reset
+                        } else {
+                            onRatingChanged(newRating)
                         }
-                    },
-                    enabled = editable,
-                    modifier = Modifier.size(starBtnSize)
-                ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = "Звезда $i",
-                        tint = tint,
-                        modifier = Modifier.size(starIconSize)
-                    )
-                }
-            }
-
-            if (editable && rating > 0f) {
-                Spacer(modifier = Modifier.width(4.dp))
-                IconButton(
-                    onClick = { onRatingChanged?.invoke(0f) },
-                    modifier = Modifier.size(28.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Clear,
-                        contentDescription = "Сбросить оценку",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
+                    }
+                },
+                enabled = editable,
+                modifier = Modifier.size(if (editable) 36.dp else 20.dp)
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = "Звезда $i",
+                    tint = tint,
+                    modifier = Modifier.size(if (editable) 28.dp else 16.dp)
+                )
             }
         }
 
-        // Decimal rating slider for precise tuning (e.g. 3.3, 4.5, 7.6)
-        if (editable && allowDecimal && onRatingChanged != null) {
-            Spacer(modifier = Modifier.height(2.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+        if (editable && rating > 0f) {
+            Spacer(modifier = Modifier.width(4.dp))
+            IconButton(
+                onClick = { onRatingChanged?.invoke(0f) },
+                modifier = Modifier.size(32.dp)
             ) {
-                Text(
-                    text = if (rating > 0f) String.format(java.util.Locale.US, "%.1f", effectiveRating) else "0.0",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.width(28.dp)
-                )
-                Slider(
-                    value = effectiveRating.coerceIn(0f, maxVal),
-                    onValueChange = { valRounded ->
-                        val stepRounded = (Math.round(valRounded * 10f) / 10f).coerceIn(0f, maxVal)
-                        val actualRating = if (scale == RatingScale.STARS_5) stepRounded * 2f else stepRounded
-                        onRatingChanged(actualRating)
-                    },
-                    valueRange = 0f..maxVal,
-                    steps = (maxVal * 10).toInt() - 1,
-                    modifier = Modifier.weight(1f)
+                Icon(
+                    imageVector = Icons.Default.Clear,
+                    contentDescription = "Сбросить оценку",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
                 )
             }
         }
@@ -470,100 +424,4 @@ fun ConfirmationDialog(
             shape = RoundedCornerShape(16.dp)
         )
     }
-}
-
-@Composable
-fun CardBookmarkIndicator(
-    bookmark: String,
-    modifier: Modifier = Modifier
-) {
-    if (bookmark.isNotBlank()) {
-        Surface(
-            shape = RoundedCornerShape(6.dp),
-            color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f),
-            border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.35f)),
-            modifier = modifier
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Bookmark,
-                    contentDescription = "Закладка",
-                    tint = MaterialTheme.colorScheme.tertiary,
-                    modifier = Modifier.size(11.dp)
-                )
-                Text(
-                    text = bookmark,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.tertiary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun QuickBookmarkDialog(
-    initialValue: String,
-    title: String,
-    onSave: (String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var text by remember { mutableStateOf(initialValue) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Bookmark,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.tertiary
-                )
-                Text("Закладка: $title", style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    "Укажите, на чем вы остановились (глава, том, серия, арка, страница):",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                OutlinedTextField(
-                    value = text,
-                    onValueChange = { text = it },
-                    placeholder = { Text("Например: Том 2, Глава 14") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    onSave(text.trim())
-                    onDismiss()
-                }
-            ) {
-                Text("Сохранить")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Отмена")
-            }
-        },
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        shape = RoundedCornerShape(16.dp)
-    )
 }

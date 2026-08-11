@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import com.example.data.models.*
 import com.example.data.repository.ReadTrackerRepository
 import com.example.utils.BackupHelper
-import java.util.UUID
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -52,12 +51,6 @@ class ReadTrackerViewModel(
     )
 
     val allTierRows = repository.allTierRows.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = emptyList()
-    )
-
-    val allCustomTierItems = repository.allCustomTierItems.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
@@ -229,12 +222,6 @@ class ReadTrackerViewModel(
         }
     }
 
-    fun updateBookBookmark(book: BookTitle, newBookmark: String) {
-        viewModelScope.launch {
-            repository.updateBook(book.copy(bookmark = newBookmark, updatedAt = System.currentTimeMillis()))
-        }
-    }
-
     fun incrementBookProgress(book: BookTitle) {
         viewModelScope.launch {
             val updated = when (book.format) {
@@ -302,12 +289,6 @@ class ReadTrackerViewModel(
             if (selectedAdaptationId.value == adaptation.id) {
                 selectedAdaptationId.value = null
             }
-        }
-    }
-
-    fun updateAdaptationBookmark(adaptation: Adaptation, newBookmark: String) {
-        viewModelScope.launch {
-            repository.updateAdaptation(adaptation.copy(bookmark = newBookmark, updatedAt = System.currentTimeMillis()))
         }
     }
 
@@ -384,45 +365,6 @@ class ReadTrackerViewModel(
         }
     }
 
-    fun updateTierItemCover(itemId: String, newCoverUrl: String?) {
-        viewModelScope.launch {
-            val rows = allTierRows.value.toMutableList()
-            var modified = false
-            for (i in rows.indices) {
-                val row = rows[i]
-                val itemIdx = row.items.indexOfFirst { it.id == itemId }
-                if (itemIdx != -1) {
-                    val updatedItems = row.items.toMutableList()
-                    val itm = updatedItems[itemIdx]
-                    updatedItems[itemIdx] = itm.copy(coverUrl = newCoverUrl)
-                    rows[i] = row.copy(items = updatedItems)
-                    modified = true
-                    // If this item has a sourceId in books or adaptations, also update the source cover
-                    if (itm.sourceId != null) {
-                        val book = allBooks.value.find { it.id == itm.sourceId }
-                        if (book != null) {
-                            repository.updateBook(book.copy(coverUrl = newCoverUrl))
-                        } else {
-                            val ad = allAdaptations.value.find { it.id == itm.sourceId }
-                            if (ad != null) {
-                                repository.updateAdaptation(ad.copy(coverUrl = newCoverUrl))
-                            }
-                        }
-                    }
-                    break
-                }
-            }
-            if (modified) {
-                repository.setTierRows(rows)
-            }
-            // Also update in custom tier items if it exists there
-            val custom = allCustomTierItems.value.find { it.id == itemId }
-            if (custom != null) {
-                repository.updateCustomTierItem(custom.copy(coverUrl = newCoverUrl))
-            }
-        }
-    }
-
     fun applyTierPreset(preset: TierPreset) {
         viewModelScope.launch {
             repository.applyTierPreset(preset)
@@ -449,38 +391,17 @@ class ReadTrackerViewModel(
                 movedItem = unassigned.find { it.id == itemId }
             }
 
-            if (movedItem != null) {
-                if (toRowId != null) {
-                    // Moving to a tier row
-                    val toIndex = rows.indexOfFirst { it.id == toRowId }
-                    if (toIndex != -1) {
-                        val destRow = rows[toIndex]
-                        val destItems = destRow.items.toMutableList()
-                        if (targetIndex in 0..destItems.size) {
-                            destItems.add(targetIndex, movedItem)
-                        } else {
-                            destItems.add(movedItem)
-                        }
-                        rows[toIndex] = destRow.copy(items = destItems)
+            if (movedItem != null && toRowId != null) {
+                val toIndex = rows.indexOfFirst { it.id == toRowId }
+                if (toIndex != -1) {
+                    val destRow = rows[toIndex]
+                    val destItems = destRow.items.toMutableList()
+                    if (targetIndex in 0..destItems.size) {
+                        destItems.add(targetIndex, movedItem)
+                    } else {
+                        destItems.add(movedItem)
                     }
-                    // If this was a custom item, remove it from standalone unassigned custom items
-                    if (movedItem.sourceId == null) {
-                        repository.deleteCustomTierItemById(movedItem.id)
-                    }
-                } else {
-                    // Moving from a tier row to unassigned pool
-                    if (movedItem.sourceId == null) {
-                        // Persist custom item so it appears in unassigned pool and is NOT lost!
-                        repository.insertCustomTierItem(
-                            CustomTierItem(
-                                id = movedItem.id,
-                                title = movedItem.title,
-                                coverUrl = movedItem.coverUrl,
-                                colorPlaceholder = movedItem.colorPlaceholder,
-                                assignedRowId = null
-                            )
-                        )
-                    }
+                    rows[toIndex] = destRow.copy(items = destItems)
                 }
             }
 
@@ -490,9 +411,7 @@ class ReadTrackerViewModel(
 
     fun addIndependentTierItem(title: String, coverUrl: String?, targetRowId: String?) {
         viewModelScope.launch {
-            val customId = UUID.randomUUID().toString()
             val newItem = TierItem(
-                id = customId,
                 title = title,
                 coverUrl = coverUrl,
                 sourceId = null
@@ -505,35 +424,6 @@ class ReadTrackerViewModel(
                     rows[idx] = row.copy(items = row.items + newItem)
                     repository.setTierRows(rows)
                 }
-            } else {
-                // Add directly to unassigned custom items!
-                repository.insertCustomTierItem(
-                    CustomTierItem(
-                        id = customId,
-                        title = title,
-                        coverUrl = coverUrl,
-                        assignedRowId = null
-                    )
-                )
-            }
-        }
-    }
-
-    fun deleteCustomTierItem(itemId: String) {
-        viewModelScope.launch {
-            repository.deleteCustomTierItemById(itemId)
-            val rows = allTierRows.value.toMutableList()
-            var modified = false
-            for (i in rows.indices) {
-                val row = rows[i]
-                val filtered = row.items.filter { it.id != itemId }
-                if (filtered.size != row.items.size) {
-                    rows[i] = row.copy(items = filtered)
-                    modified = true
-                }
-            }
-            if (modified) {
-                repository.setTierRows(rows)
             }
         }
     }
@@ -542,25 +432,11 @@ class ReadTrackerViewModel(
         rows: List<TierListRow>,
         books: List<BookTitle> = allBooks.value,
         adaptations: List<Adaptation> = allAdaptations.value,
-        customItems: List<CustomTierItem> = allCustomTierItems.value,
         mode: LibraryMode = libraryMode.value
     ): List<TierItem> {
-        val assignedItemIds = rows.flatMap { it.items }.map { it.id }.toSet()
         val assignedSourceIds = rows.flatMap { it.items }.mapNotNull { it.sourceId }.toSet()
 
-        val unassignedCustom = customItems
-            .filter { it.id !in assignedItemIds }
-            .map {
-                TierItem(
-                    id = it.id,
-                    sourceId = null,
-                    title = it.title,
-                    coverUrl = it.coverUrl,
-                    colorPlaceholder = it.colorPlaceholder
-                )
-            }
-
-        val unassignedSources = if (mode == LibraryMode.BOOKS) {
+        return if (mode == LibraryMode.BOOKS) {
             books
                 .filter { it.id !in assignedSourceIds }
                 .map {
@@ -585,8 +461,6 @@ class ReadTrackerViewModel(
                     )
                 }
         }
-
-        return unassignedCustom + unassignedSources
     }
 
     // Settings & Goals Actions

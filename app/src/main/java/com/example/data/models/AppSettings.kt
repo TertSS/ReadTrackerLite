@@ -14,7 +14,6 @@ data class AppSettings(
     val genresEnabled: Boolean = true,
     val ratingEnabled: Boolean = true,
     val ratingScale: RatingScale = RatingScale.STARS_10,
-    val allowDecimalRating: Boolean = true,
     val goalsEnabled: Boolean = true,
     val bookmarksEnabled: Boolean = true,
     val searchFilterEnabled: Boolean = true,
@@ -67,9 +66,6 @@ data class AppSettings(
     
     // Tier list active mode
     val tierListIndependent: Boolean = false,
-    
-    // Header styling
-    val uniformHeaderStyle: Boolean = false,
     
     // Animation settings
     val disableAnimations: Boolean = false

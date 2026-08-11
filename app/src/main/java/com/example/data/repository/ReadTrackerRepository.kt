@@ -24,7 +24,6 @@ class ReadTrackerRepository(
     val allAdaptations: Flow<List<Adaptation>> = adaptationDao.getAllAdaptations()
     val allReviews: Flow<List<Review>> = reviewDao.getAllReviews()
     val allTierRows: Flow<List<TierListRow>> = tierListDao.getAllRows()
-    val allCustomTierItems: Flow<List<CustomTierItem>> = tierListDao.getAllCustomTierItems()
     
     val settingsFlow: Flow<AppSettings> = settingsDao.getSettingsFlow()
         .map { it ?: AppSettings() }
@@ -120,22 +119,6 @@ class ReadTrackerRepository(
     suspend fun setTierRows(rows: List<TierListRow>) = withContext(Dispatchers.IO) {
         tierListDao.deleteAllRows()
         tierListDao.insertRows(rows)
-    }
-
-    suspend fun insertCustomTierItem(item: CustomTierItem) = withContext(Dispatchers.IO) {
-        tierListDao.insertCustomTierItem(item)
-    }
-
-    suspend fun updateCustomTierItem(item: CustomTierItem) = withContext(Dispatchers.IO) {
-        tierListDao.updateCustomTierItem(item)
-    }
-
-    suspend fun deleteCustomTierItem(item: CustomTierItem) = withContext(Dispatchers.IO) {
-        tierListDao.deleteCustomTierItem(item)
-    }
-
-    suspend fun deleteCustomTierItemById(id: String) = withContext(Dispatchers.IO) {
-        tierListDao.deleteCustomTierItemById(id)
     }
 
     suspend fun applyTierPreset(preset: TierPreset) = withContext(Dispatchers.IO) {
