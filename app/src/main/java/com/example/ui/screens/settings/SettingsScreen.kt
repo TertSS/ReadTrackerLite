@@ -377,6 +377,13 @@ fun SettingsScreen(
                         onCheckedChange = { viewModel.updateAppSettings(settings.copy(disableAnimations = it)) }
                     )
 
+                    SettingToggleRow(
+                        title = "Единый стиль заголовков",
+                        subtitle = "Одинаковое оформление шапок во всех окнах приложения",
+                        checked = settings.uniformHeaderStyle,
+                        onCheckedChange = { viewModel.updateAppSettings(settings.copy(uniformHeaderStyle = it)) }
+                    )
+
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
                     // Card Style for items without cover

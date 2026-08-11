@@ -1,5 +1,9 @@
 package com.example.ui.screens.edit
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -51,6 +55,14 @@ fun AddEditTitleScreen(
     var droppedReason by remember { mutableStateOf(existingBook?.droppedReason ?: "") }
     var showInReviews by remember { mutableStateOf(existingBook?.showInReviews ?: true) }
     var coverUrl by remember { mutableStateOf(existingBook?.coverUrl ?: "") }
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            coverUrl = uri.toString()
+        }
+    }
 
     // Progress fields
     var words by remember { mutableStateOf(existingBook?.words?.toString() ?: "0") }
@@ -197,37 +209,85 @@ fun AddEditTitleScreen(
                 }
             }
 
-            // Cover URL Input & Preview
+            // Cover Management Section
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
             ) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    CoverImage(
-                        coverUrl = coverUrl.ifBlank { null },
-                        title = title.ifBlank { "Книга" },
-                        width = 64.dp,
-                        height = 92.dp,
-                        corner = 8.dp
+                    Text(
+                        text = "Обложка",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
                     )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Обложка", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        OutlinedTextField(
-                            value = coverUrl,
-                            onValueChange = { coverUrl = it },
-                            placeholder = { Text("URL изображения...") },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
-                            textStyle = MaterialTheme.typography.bodySmall
-                        )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        if (coverUrl.isNotBlank()) {
+                            CoverImage(
+                                coverUrl = coverUrl.ifBlank { null },
+                                title = title.ifBlank { "Книга" },
+                                width = 64.dp,
+                                height = 92.dp,
+                                corner = 8.dp
+                            )
+                        }
+
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = coverUrl,
+                                onValueChange = { coverUrl = it },
+                                label = { Text("URL обложки") },
+                                placeholder = { Text("https://example.com/cover.jpg") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                textStyle = MaterialTheme.typography.bodySmall
+                            )
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                OutlinedButton(
+                                    onClick = {
+                                        photoPickerLauncher.launch(
+                                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                        )
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+                                ) {
+                                    Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Из файлов", fontSize = 12.sp)
+                                }
+
+                                if (coverUrl.isNotBlank()) {
+                                    TextButton(
+                                        onClick = { coverUrl = "" },
+                                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+                                    ) {
+                                        Icon(Icons.Default.DeleteOutline, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(2.dp))
+                                        Text("Удалить", fontSize = 12.sp)
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }

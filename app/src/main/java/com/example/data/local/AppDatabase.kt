@@ -13,9 +13,10 @@ import com.example.data.models.*
         Adaptation::class,
         Review::class,
         TierListRow::class,
+        CustomTierItem::class,
         AppSettings::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

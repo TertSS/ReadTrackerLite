@@ -68,6 +68,9 @@ data class AppSettings(
     // Tier list active mode
     val tierListIndependent: Boolean = false,
     
+    // Header styling
+    val uniformHeaderStyle: Boolean = false,
+    
     // Animation settings
     val disableAnimations: Boolean = false
 )

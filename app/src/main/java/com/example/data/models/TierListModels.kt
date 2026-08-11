@@ -12,6 +12,16 @@ data class TierItem(
     val colorPlaceholder: Long = 0xFF201F1FL
 )
 
+@Entity(tableName = "custom_tier_items")
+data class CustomTierItem(
+    @PrimaryKey
+    val id: String = UUID.randomUUID().toString(),
+    val title: String,
+    val coverUrl: String? = null,
+    val colorPlaceholder: Long = 0xFF201F1FL,
+    val assignedRowId: String? = null
+)
+
 @Entity(tableName = "tier_rows")
 data class TierListRow(
     @PrimaryKey

@@ -631,6 +631,11 @@ fun BookGridCard(
                         )
                     }
 
+                    if (book.bookmark.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        CardBookmarkIndicator(bookmark = book.bookmark)
+                    }
+
                     Spacer(modifier = Modifier.height(6.dp))
 
                     Text(
@@ -721,6 +726,11 @@ fun BookGridCard(
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
+                            }
+
+                            if (book.bookmark.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                CardBookmarkIndicator(bookmark = book.bookmark)
                             }
 
                             Spacer(modifier = Modifier.height(6.dp))
@@ -826,6 +836,11 @@ fun BookGridCard(
                             )
                         }
 
+                        if (book.bookmark.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            CardBookmarkIndicator(bookmark = book.bookmark)
+                        }
+
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Row(
@@ -905,6 +920,10 @@ fun BookGridCard(
                             overflow = TextOverflow.Ellipsis,
                             color = MaterialTheme.colorScheme.onSurface
                         )
+
+                        if (book.bookmark.isNotBlank()) {
+                            CardBookmarkIndicator(bookmark = book.bookmark)
+                        }
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -989,6 +1008,11 @@ fun BookGridCard(
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
+                            }
+
+                            if (book.bookmark.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                CardBookmarkIndicator(bookmark = book.bookmark)
                             }
 
                             Spacer(modifier = Modifier.height(6.dp))
@@ -1120,14 +1144,9 @@ fun BookListCard(
                         )
                     }
 
-                    if (book.bookmark.isNotEmpty()) {
-                        Text(
-                            text = "🔖 ${book.bookmark}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.tertiary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                    if (book.bookmark.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        CardBookmarkIndicator(bookmark = book.bookmark)
                     }
 
                     Spacer(modifier = Modifier.height(4.dp))
@@ -1203,6 +1222,10 @@ fun BookListCard(
                     StatusBadge(status = book.status)
                 }
 
+                if (book.bookmark.isNotBlank()) {
+                    CardBookmarkIndicator(bookmark = book.bookmark)
+                }
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -1245,7 +1268,7 @@ fun BookListCard(
                     .padding(10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (showCovers || coverlessStyle == "GRADIENT" || coverlessStyle == "CLASSIC") {
+                if (hasCover) {
                     CoverImage(
                         coverUrl = book.coverUrl,
                         title = book.title,
@@ -1288,14 +1311,9 @@ fun BookListCard(
                         )
                     }
 
-                    if (book.bookmark.isNotEmpty()) {
-                        Text(
-                            text = "🔖 ${book.bookmark}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.tertiary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                    if (book.bookmark.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        CardBookmarkIndicator(bookmark = book.bookmark)
                     }
 
                     Spacer(modifier = Modifier.height(4.dp))
@@ -1453,6 +1471,11 @@ fun AdaptationGridCard(
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
+                if (adaptation.bookmark.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    CardBookmarkIndicator(bookmark = adaptation.bookmark)
+                }
+
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Row(
@@ -1514,7 +1537,7 @@ fun AdaptationListCard(
                 .padding(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (hasCover || coverlessStyle == "GRADIENT" || coverlessStyle == "CLASSIC") {
+            if (hasCover) {
                 CoverImage(
                     coverUrl = adaptation.coverUrl,
                     title = adaptation.title,
@@ -1548,13 +1571,9 @@ fun AdaptationListCard(
                     StatusBadge(status = adaptation.status, isAdaptation = true)
                 }
 
-                if (adaptation.bookmark.isNotEmpty()) {
-                    Text(
-                        text = "🔖 ${adaptation.bookmark}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.tertiary,
-                        maxLines = 1
-                    )
+                if (adaptation.bookmark.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    CardBookmarkIndicator(bookmark = adaptation.bookmark)
                 }
 
                 Spacer(modifier = Modifier.height(4.dp))

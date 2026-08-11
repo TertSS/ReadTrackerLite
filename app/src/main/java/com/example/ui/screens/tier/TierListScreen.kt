@@ -60,6 +60,8 @@ fun TierListScreen(
     val currentMode by viewModel.libraryMode.collectAsStateWithLifecycle()
     val allBooks by viewModel.allBooks.collectAsStateWithLifecycle()
     val allAdaptations by viewModel.allAdaptations.collectAsStateWithLifecycle()
+    val customTierItems by viewModel.allCustomTierItems.collectAsStateWithLifecycle()
+    val settings by viewModel.appSettings.collectAsStateWithLifecycle()
 
     var showPresetMenu by remember { mutableStateOf(false) }
     var showAddRowDialog by remember { mutableStateOf(false) }
@@ -68,8 +70,8 @@ fun TierListScreen(
     var selectedItemForMove by remember { mutableStateOf<Pair<TierItem, String?>?>(null) } // item, fromRowId
     var selectedItemForCoverSheet by remember { mutableStateOf<Pair<TierItem, String?>?>(null) } // item, fromRowId
 
-    val unassignedItems = remember(tierRows, allBooks, allAdaptations, currentMode) {
-        viewModel.getUnassignedTierItems(tierRows, allBooks, allAdaptations, currentMode)
+    val unassignedItems = remember(tierRows, allBooks, allAdaptations, customTierItems, currentMode) {
+        viewModel.getUnassignedTierItems(tierRows, allBooks, allAdaptations, customTierItems, currentMode)
     }
 
     Scaffold(
