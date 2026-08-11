@@ -41,5 +41,17 @@ val StatusCompletedColor = Color(0xFF9ECAFF) // Blue
 val StatusPausedColor = Color(0xFFBFC7D4) // Gray/Lavender
 val StatusDroppedColor = Color(0xFFFFB4AB) // Red
 
+// Format Specific Accents
+val FormatSeriesColor = Color(0xFF818CF8) // Indigo (LN)
+val FormatNovelColor = Color(0xFFA78BFA) // Purple (Роман)
+val FormatSingleColor = Color(0xFF34D399) // Emerald (Сингл)
+val FormatWebNovelColor = Color(0xFFFB923C) // Orange (WN)
+val FormatHybridColor = Color(0xFFF472B6) // Pink (LN+WN)
+val FormatVisualNovelColor = Color(0xFF38BDF8) // Cyan (VN)
+
+val AdaptationSeriesColor = Color(0xFF60A5FA) // Blue (Сериал)
+val AdaptationMovieColor = Color(0xFFC084FC) // Purple (Фильм)
+
 // Star Rating Yellow
 val StarGold = Color(0xFFFFC107)
+

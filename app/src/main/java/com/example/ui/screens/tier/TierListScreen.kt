@@ -109,14 +109,14 @@ class TierDragDropState {
 
     private fun updateDropTarget(pos: Offset) {
         val uBounds = unassignedBounds
-        if (uBounds != null && uBounds.contains(pos)) {
+        if (uBounds != null && pos.y >= uBounds.top && pos.y <= uBounds.bottom) {
             val target = DropTarget(rowId = null, insertIndex = -1)
             if (currentDropTarget != target) currentDropTarget = target
             return
         }
 
         for ((rowId, rect) in rowBounds) {
-            if (rect.contains(pos)) {
+            if (pos.y >= rect.top && pos.y <= rect.bottom) {
                 val itemsMap = rowItemBounds[rowId] ?: emptyMap()
                 if (itemsMap.isEmpty()) {
                     val target = DropTarget(rowId = rowId, insertIndex = 0)
@@ -386,8 +386,11 @@ fun TierListScreen(
                                     unassignedItems.forEach { item ->
                                         UnassignedItemThumbnail(
                                             item = item,
+                                            isBeingDragged = dragState.isDragging && dragState.draggedItem?.id == item.id,
                                             onClick = {
-                                                selectedItemForSheet = item to null
+                                                if (!dragState.isDragging) {
+                                                    selectedItemForSheet = item to null
+                                                }
                                             },
                                             onStartDrag = { pos -> handleStartDrag(item, null, pos) },
                                             onDragDelta = handleDragDelta,
@@ -1232,7 +1235,12 @@ fun TierRowCard(
                     row.items.forEachIndexed { index, item ->
                         TierItemThumbnail(
                             item = item,
-                            onClick = { onItemClick(item) },
+                            isBeingDragged = dragState.isDragging && dragState.draggedItem?.id == item.id,
+                            onClick = {
+                                if (!dragState.isDragging) {
+                                    onItemClick(item)
+                                }
+                            },
                             onStartDrag = { pos -> onItemStartDrag(item, pos) },
                             onDragDelta = onItemDragDelta,
                             onEndDrag = onItemEndDrag,
@@ -1243,7 +1251,7 @@ fun TierRowCard(
                         )
 
                         if (isRowHovered && targetInsertIndex == index + 1) {
-                            InsertionSlotIndicator(color = MaterialTheme.colorScheme.primary)
+                            InsertionSlotIndicator(color = Color(row.color).takeIf { row.color != 0L } ?: MaterialTheme.colorScheme.primary)
                         }
                     }
                 }
@@ -1256,6 +1264,7 @@ fun TierRowCard(
 @Composable
 fun TierItemThumbnail(
     item: TierItem,
+    isBeingDragged: Boolean = false,
     onClick: () -> Unit,
     onStartDrag: (Offset) -> Unit,
     onDragDelta: (Offset) -> Unit,
@@ -1269,6 +1278,7 @@ fun TierItemThumbnail(
     Column(
         modifier = modifier
             .width(60.dp)
+            .alpha(if (isBeingDragged) 0.25f else 1f)
             .clip(RoundedCornerShape(8.dp))
             .onGloballyPositioned { coords ->
                 itemPosition = coords.positionInRoot()
@@ -1315,6 +1325,7 @@ fun TierItemThumbnail(
 @Composable
 fun UnassignedItemThumbnail(
     item: TierItem,
+    isBeingDragged: Boolean = false,
     onClick: () -> Unit,
     onStartDrag: (Offset) -> Unit,
     onDragDelta: (Offset) -> Unit,
@@ -1328,6 +1339,7 @@ fun UnassignedItemThumbnail(
     Column(
         modifier = modifier
             .width(64.dp)
+            .alpha(if (isBeingDragged) 0.25f else 1f)
             .clip(RoundedCornerShape(8.dp))
             .onGloballyPositioned { coords ->
                 itemPosition = coords.positionInRoot()
@@ -1377,10 +1389,10 @@ fun InsertionSlotIndicator(
 ) {
     Surface(
         modifier = modifier
-            .width(28.dp)
+            .width(32.dp)
             .height(76.dp),
         shape = RoundedCornerShape(8.dp),
-        color = color.copy(alpha = 0.2f),
+        color = color.copy(alpha = 0.25f),
         border = BorderStroke(2.dp, color)
     ) {
         Box(
@@ -1391,7 +1403,7 @@ fun InsertionSlotIndicator(
                 Icons.Default.Add,
                 contentDescription = null,
                 tint = color,
-                modifier = Modifier.size(18.dp)
+                modifier = Modifier.size(20.dp)
             )
         }
     }

@@ -586,6 +586,19 @@ class ReadTrackerViewModel(
         return repository.importLibrary(jsonString, replace)
     }
 
+    fun exportSettingsJson(): String {
+        return BackupHelper.exportSettingsToJson(appSettings.value)
+    }
+
+    fun importSettingsJson(jsonString: String): Boolean {
+        val (success, newSettings) = BackupHelper.parseSettingsJson(jsonString)
+        if (success && newSettings != null) {
+            updateAppSettings(newSettings)
+            return true
+        }
+        return false
+    }
+
     fun clearAllData() {
         viewModelScope.launch {
             repository.clearAllData()

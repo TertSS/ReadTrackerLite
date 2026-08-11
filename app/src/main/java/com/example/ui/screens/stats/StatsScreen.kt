@@ -241,7 +241,7 @@ fun StatsScreen(
                             current = "$totalCompletedWebNovels",
                             target = "${settings.webTarget}",
                             progress = webProgress,
-                            color = MaterialTheme.colorScheme.tertiary
+                            color = Color(0xFF38BDF8)
                         )
                     }
                 }
@@ -366,10 +366,10 @@ fun StatsScreen(
                         add { mod ->
                             BentoStatCard(
                                 modifier = mod,
-                                icon = Icons.AutoMirrored.Filled.MenuBook,
+                                icon = Icons.Default.Language,
                                 title = "Завершено веб",
                                 value = "$totalCompletedWebNovels",
-                                color = MaterialTheme.colorScheme.tertiary
+                                color = Color(0xFF38BDF8)
                             )
                         }
                     }

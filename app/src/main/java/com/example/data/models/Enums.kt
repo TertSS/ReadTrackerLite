@@ -13,12 +13,12 @@ enum class TitleStatus(val id: String, val labelBook: String, val labelAdaptatio
 }
 
 enum class TitleFormat(val id: String, val label: String, val shortLabel: String) {
-    SERIES("series", "Серия томов / Ранобэ", "LN"),
-    NOVEL("novel", "Обычный роман", "Роман"),
-    WEB_NOVEL("web_novel", "Веб-новелла", "WN"),
+    SERIES("series", "Серия томов (LN)", "LN"),
+    NOVEL("novel", "Роман", "Роман"),
+    WEB_NOVEL("web_novel", "Веб-новелла (WN)", "WN"),
     SINGLE("single", "Сингл (одиночная)", "Сингл"),
-    HYBRID("hybrid", "Гибрид LN + WN", "LN+WN"),
-    VISUAL_NOVEL("visual_novel", "Визуальная новелла", "VN");
+    HYBRID("hybrid", "Гибрид (LN+WN)", "LN+WN"),
+    VISUAL_NOVEL("visual_novel", "Визуальная новелла (VN)", "VN");
 
     companion object {
         fun fromId(id: String): TitleFormat = entries.find { it.id.equals(id, ignoreCase = true) } ?: SERIES

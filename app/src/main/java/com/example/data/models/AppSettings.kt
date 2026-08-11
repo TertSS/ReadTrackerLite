@@ -72,6 +72,8 @@ data class AppSettings(
     val uniformHeadersEnabled: Boolean = false,
     val updatedEditorEnabled: Boolean = false,
     val hideWordsEquivalent: Boolean = false,
+    val alignFormatWithTitle: Boolean = false,
+    val roundedInputFields: Boolean = false,
     
     // Animation settings
     val disableAnimations: Boolean = false

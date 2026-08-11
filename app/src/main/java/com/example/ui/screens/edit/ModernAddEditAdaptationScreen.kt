@@ -317,20 +317,46 @@ fun ModernAddEditAdaptationScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
+                                val isSeries = type == AdaptationType.SERIES
                                 FilterChip(
-                                    selected = type == AdaptationType.SERIES,
+                                    selected = isSeries,
                                     onClick = { type = AdaptationType.SERIES },
-                                    label = { Text("Сериал / Аниме-сериал") },
+                                    label = { Text("Сериал / Аниме", fontWeight = if (isSeries) FontWeight.Bold else FontWeight.Normal) },
                                     leadingIcon = { Icon(Icons.Default.Tv, contentDescription = null) },
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.weight(1f),
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = AdaptationSeriesColor.copy(alpha = 0.22f),
+                                        selectedLabelColor = AdaptationSeriesColor,
+                                        selectedLeadingIconColor = AdaptationSeriesColor
+                                    ),
+                                    border = FilterChipDefaults.filterChipBorder(
+                                        enabled = true,
+                                        selected = isSeries,
+                                        borderColor = if (isSeries) AdaptationSeriesColor else MaterialTheme.colorScheme.outlineVariant,
+                                        selectedBorderColor = AdaptationSeriesColor,
+                                        borderWidth = if (isSeries) 1.5.dp else 1.dp
+                                    )
                                 )
 
+                                val isMovie = type == AdaptationType.MOVIE
                                 FilterChip(
-                                    selected = type == AdaptationType.MOVIE,
+                                    selected = isMovie,
                                     onClick = { type = AdaptationType.MOVIE },
-                                    label = { Text("Полнометражный фильм") },
+                                    label = { Text("Фильм / Франшиза", fontWeight = if (isMovie) FontWeight.Bold else FontWeight.Normal) },
                                     leadingIcon = { Icon(Icons.Default.Theaters, contentDescription = null) },
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.weight(1f),
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = AdaptationMovieColor.copy(alpha = 0.22f),
+                                        selectedLabelColor = AdaptationMovieColor,
+                                        selectedLeadingIconColor = AdaptationMovieColor
+                                    ),
+                                    border = FilterChipDefaults.filterChipBorder(
+                                        enabled = true,
+                                        selected = isMovie,
+                                        borderColor = if (isMovie) AdaptationMovieColor else MaterialTheme.colorScheme.outlineVariant,
+                                        selectedBorderColor = AdaptationMovieColor,
+                                        borderWidth = if (isMovie) 1.5.dp else 1.dp
+                                    )
                                 )
                             }
                         }
@@ -367,7 +393,7 @@ fun ModernAddEditAdaptationScreen(
                                     FilterChip(
                                         selected = isSelected,
                                         onClick = { status = st },
-                                        label = { Text(st.labelAdaptation) },
+                                        label = { Text(st.labelAdaptation, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
                                         leadingIcon = {
                                             Box(
                                                 modifier = Modifier
@@ -375,7 +401,19 @@ fun ModernAddEditAdaptationScreen(
                                                     .clip(CircleShape)
                                                     .background(statusColor)
                                             )
-                                        }
+                                        },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = statusColor.copy(alpha = 0.22f),
+                                            selectedLabelColor = statusColor,
+                                            selectedLeadingIconColor = statusColor
+                                        ),
+                                        border = FilterChipDefaults.filterChipBorder(
+                                            enabled = true,
+                                            selected = isSelected,
+                                            borderColor = if (isSelected) statusColor else MaterialTheme.colorScheme.outlineVariant,
+                                            selectedBorderColor = statusColor,
+                                            borderWidth = if (isSelected) 1.5.dp else 1.dp
+                                        )
                                     )
                                 }
                             }

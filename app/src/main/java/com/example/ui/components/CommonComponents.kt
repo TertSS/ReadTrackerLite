@@ -233,10 +233,13 @@ fun StatusBadge(
 @Composable
 fun FormatBadge(
     format: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    alignFlush: Boolean = false
 ) {
     Surface(
-        modifier = modifier.clip(RoundedCornerShape(6.dp)),
+        modifier = modifier
+            .then(if (alignFlush) Modifier.offset(x = (-4).dp) else Modifier)
+            .clip(RoundedCornerShape(6.dp)),
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
         shape = RoundedCornerShape(6.dp),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
@@ -246,7 +249,12 @@ fun FormatBadge(
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            modifier = Modifier.padding(
+                start = if (alignFlush) 4.dp else 6.dp,
+                end = if (alignFlush) 5.dp else 6.dp,
+                top = 2.dp,
+                bottom = 2.dp
+            ),
             fontSize = 10.sp
         )
     }

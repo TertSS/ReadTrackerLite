@@ -2,13 +2,32 @@ package com.example.ui.theme
 
 import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
+
+private val DefaultShapes = Shapes(
+    extraSmall = RoundedCornerShape(4.dp),
+    small = RoundedCornerShape(8.dp),
+    medium = RoundedCornerShape(12.dp),
+    large = RoundedCornerShape(16.dp),
+    extraLarge = RoundedCornerShape(28.dp)
+)
+
+private val RoundedShapes = Shapes(
+    extraSmall = RoundedCornerShape(16.dp),
+    small = RoundedCornerShape(16.dp),
+    medium = RoundedCornerShape(18.dp),
+    large = RoundedCornerShape(20.dp),
+    extraLarge = RoundedCornerShape(28.dp)
+)
 
 private val ReadTrackerDarkScheme = darkColorScheme(
     primary = PrimaryBlue,
@@ -45,9 +64,11 @@ private val ReadTrackerDarkScheme = darkColorScheme(
 @Composable
 fun ReadTrackerTheme(
     darkTheme: Boolean = true, // Default to stylish dark mode from mockup
+    roundedInputFields: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = ReadTrackerDarkScheme
+    val shapes = if (roundedInputFields) RoundedShapes else DefaultShapes
 
     val view = LocalView.current
     if (!view.isInEditMode) {
@@ -68,6 +89,7 @@ fun ReadTrackerTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
+        shapes = shapes,
         content = content
     )
 }

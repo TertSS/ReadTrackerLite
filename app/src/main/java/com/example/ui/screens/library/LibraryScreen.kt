@@ -298,6 +298,7 @@ fun LibraryScreen(
                                     showCovers = settings.showCoversInLibrary,
                                     coverlessStyle = settings.coverlessCardStyle,
                                     shortenNumbers = settings.shortenNumbers,
+                                    alignFormatWithTitle = settings.alignFormatWithTitle,
                                     onClick = { viewModel.openBookDetails(book.id) },
                                     onLongClick = { bookToDelete = book }
                                 )
@@ -317,6 +318,7 @@ fun LibraryScreen(
                                     showCovers = settings.showCoversInLibrary,
                                     coverlessStyle = settings.coverlessCardStyle,
                                     shortenNumbers = settings.shortenNumbers,
+                                    alignFormatWithTitle = settings.alignFormatWithTitle,
                                     onClick = { viewModel.openBookDetails(book.id) },
                                     onLongClick = { bookToDelete = book }
                                 )
@@ -347,6 +349,7 @@ fun LibraryScreen(
                                     ratingEnabled = settings.ratingEnabled,
                                     showCovers = settings.showCoversInLibrary,
                                     coverlessStyle = settings.coverlessCardStyle,
+                                    alignFormatWithTitle = settings.alignFormatWithTitle,
                                     onClick = { viewModel.openAdaptationDetails(adaptation.id) },
                                     onLongClick = { adaptationToDelete = adaptation }
                                 )
@@ -365,6 +368,7 @@ fun LibraryScreen(
                                     ratingEnabled = settings.ratingEnabled,
                                     showCovers = settings.showCoversInLibrary,
                                     coverlessStyle = settings.coverlessCardStyle,
+                                    alignFormatWithTitle = settings.alignFormatWithTitle,
                                     onClick = { viewModel.openAdaptationDetails(adaptation.id) },
                                     onLongClick = { adaptationToDelete = adaptation }
                                 )
@@ -534,6 +538,7 @@ fun BookGridCard(
     showCovers: Boolean = true,
     coverlessStyle: String = "CLASSIC",
     shortenNumbers: Boolean = false,
+    alignFormatWithTitle: Boolean = false,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null
 ) {
@@ -589,7 +594,7 @@ fun BookGridCard(
                     )
 
                     Box(modifier = Modifier.padding(8.dp).align(Alignment.TopStart)) {
-                        FormatBadge(format = book.format.shortLabel)
+                        FormatBadge(format = book.format.shortLabel, alignFlush = alignFormatWithTitle)
                     }
 
                     Box(modifier = Modifier.padding(8.dp).align(Alignment.TopEnd)) {
@@ -698,7 +703,7 @@ fun BookGridCard(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                FormatBadge(format = book.format.shortLabel)
+                                FormatBadge(format = book.format.shortLabel, alignFlush = alignFormatWithTitle)
                                 StatusBadge(status = book.status)
                             }
 
@@ -833,7 +838,7 @@ fun BookGridCard(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            FormatBadge(format = book.format.shortLabel)
+                            FormatBadge(format = book.format.shortLabel, alignFlush = alignFormatWithTitle)
                             Text(
                                 text = "${Formatters.formatNumber(book.effectiveWords, shorten = shortenNumbers)} сл.",
                                 style = MaterialTheme.typography.labelSmall,
@@ -893,7 +898,7 @@ fun BookGridCard(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            FormatBadge(format = book.format.shortLabel)
+                            FormatBadge(format = book.format.shortLabel, alignFlush = alignFormatWithTitle)
                             StatusBadge(status = book.status)
                         }
 
@@ -955,7 +960,7 @@ fun BookGridCard(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            FormatBadge(format = book.format.shortLabel)
+                            FormatBadge(format = book.format.shortLabel, alignFlush = alignFormatWithTitle)
                             StatusBadge(status = book.status)
                         }
 
@@ -1051,6 +1056,7 @@ fun BookListCard(
     showCovers: Boolean = true,
     coverlessStyle: String = "CLASSIC",
     shortenNumbers: Boolean = false,
+    alignFormatWithTitle: Boolean = false,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null
 ) {
@@ -1141,7 +1147,7 @@ fun BookListCard(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            FormatBadge(format = book.format.shortLabel)
+                            FormatBadge(format = book.format.shortLabel, alignFlush = alignFormatWithTitle)
                             if (ratingEnabled && book.rating > 0f) {
                                 Text(
                                     text = "★ ${Formatters.formatRating(book.rating, ratingScale)}",
@@ -1190,7 +1196,7 @@ fun BookListCard(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.weight(1f, fill = false)
                     ) {
-                        FormatBadge(format = book.format.shortLabel)
+                        FormatBadge(format = book.format.shortLabel, alignFlush = alignFormatWithTitle)
                         Text(
                             text = book.title,
                             style = MaterialTheme.typography.titleSmall,
@@ -1309,7 +1315,7 @@ fun BookListCard(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            FormatBadge(format = book.format.shortLabel)
+                            FormatBadge(format = book.format.shortLabel, alignFlush = alignFormatWithTitle)
                             if (ratingEnabled && book.rating > 0f) {
                                 Text(
                                     text = "★ ${Formatters.formatRating(book.rating, ratingScale)}",
@@ -1353,6 +1359,7 @@ fun AdaptationGridCard(
     ratingEnabled: Boolean,
     showCovers: Boolean = true,
     coverlessStyle: String = "CLASSIC",
+    alignFormatWithTitle: Boolean = false,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null
 ) {
@@ -1401,7 +1408,7 @@ fun AdaptationGridCard(
                     )
 
                     Box(modifier = Modifier.padding(8.dp).align(Alignment.TopStart)) {
-                        FormatBadge(format = adaptation.type.shortLabel)
+                        FormatBadge(format = adaptation.type.shortLabel, alignFlush = alignFormatWithTitle)
                     }
 
                     Box(modifier = Modifier.padding(8.dp).align(Alignment.TopEnd)) {
@@ -1426,7 +1433,7 @@ fun AdaptationGridCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    FormatBadge(format = adaptation.type.shortLabel)
+                    FormatBadge(format = adaptation.type.shortLabel, alignFlush = alignFormatWithTitle)
                     StatusBadge(status = adaptation.status, isAdaptation = true)
                 }
                 LinearProgressIndicator(
@@ -1491,6 +1498,7 @@ fun AdaptationListCard(
     ratingEnabled: Boolean,
     showCovers: Boolean = true,
     coverlessStyle: String = "CLASSIC",
+    alignFormatWithTitle: Boolean = false,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null
 ) {
@@ -1568,7 +1576,7 @@ fun AdaptationListCard(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        FormatBadge(format = adaptation.type.shortLabel)
+                        FormatBadge(format = adaptation.type.shortLabel, alignFlush = alignFormatWithTitle)
                         if (ratingEnabled && adaptation.rating > 0f) {
                             Text(
                                 text = "★ ${Formatters.formatRating(adaptation.rating, ratingScale)}",

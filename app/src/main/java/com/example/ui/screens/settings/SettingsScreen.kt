@@ -55,7 +55,12 @@ fun SettingsScreen(
     var importReplaceMode by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
 
-    // SAF File Pickers for Export and Import
+    var showSettingsExportDialog by remember { mutableStateOf(false) }
+    var showSettingsImportDialog by remember { mutableStateOf(false) }
+    var settingsExportJsonText by remember { mutableStateOf("") }
+    var settingsImportJsonText by remember { mutableStateOf("") }
+
+    // SAF File Pickers for Export and Import (Library)
     val exportFileLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json")
     ) { uri ->
@@ -92,6 +97,47 @@ fun SettingsScreen(
                 } catch (e: Exception) {
                     Toast.makeText(context, "Ошибка чтения файла: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
                 }
+            }
+        }
+    }
+
+    // SAF File Pickers for Export and Import (Settings)
+    val exportSettingsFileLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri != null) {
+            try {
+                val jsonString = viewModel.exportSettingsJson()
+                context.contentResolver.openOutputStream(uri)?.use { stream ->
+                    stream.write(jsonString.toByteArray(Charsets.UTF_8))
+                }
+                Toast.makeText(context, "Настройки успешно экспортированы в файл!", Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "Ошибка сохранения файла настроек: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    val importSettingsFileLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            try {
+                val jsonString = context.contentResolver.openInputStream(uri)?.use { stream ->
+                    stream.bufferedReader(Charsets.UTF_8).readText()
+                }
+                if (!jsonString.isNullOrBlank()) {
+                    val success = viewModel.importSettingsJson(jsonString)
+                    if (success) {
+                        Toast.makeText(context, "Настройки успешно импортированы!", Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(context, "Ошибка импорта: неверный формат файла настроек", Toast.LENGTH_LONG).show()
+                    }
+                } else {
+                    Toast.makeText(context, "Выбран пустой файл", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Ошибка чтения файла настроек: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -220,6 +266,13 @@ fun SettingsScreen(
                         subtitle = "Использовать обновленный интерфейс добавления и редактирования тайтлов",
                         checked = settings.updatedEditorEnabled,
                         onCheckedChange = { viewModel.updateAppSettings(settings.copy(updatedEditorEnabled = it)) }
+                    )
+
+                    SettingToggleRow(
+                        title = "Закругленные поля ввода",
+                        subtitle = "Использовать плавную закругленную форму для текстовых полей ввода и диалогов",
+                        checked = settings.roundedInputFields,
+                        onCheckedChange = { viewModel.updateAppSettings(settings.copy(roundedInputFields = it)) }
                     )
                 }
             }
@@ -428,6 +481,15 @@ fun SettingsScreen(
                             )
                         }
                     }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+
+                    SettingToggleRow(
+                        title = "Выравнивание формата (LN/Веб)",
+                        subtitle = "Выравнивать текст формата строго по вертикали с началом названия",
+                        checked = settings.alignFormatWithTitle,
+                        onCheckedChange = { viewModel.updateAppSettings(settings.copy(alignFormatWithTitle = it)) }
+                    )
 
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
@@ -650,10 +712,18 @@ fun SettingsScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "Резервное копирование и файлы JSON",
+                        text = "Резервное копирование и данные JSON",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.tertiary
+                    )
+
+                    // SECTION 1: LIBRARY BACKUP
+                    Text(
+                        text = "Библиотека (произведения, экранизации, отзывы)",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
                     )
                     Text(
                         text = "Экспортируйте и импортируйте библиотеку через выбор файлов .json на вашем устройстве",
@@ -685,12 +755,10 @@ fun SettingsScreen(
                     ) {
                         Icon(Icons.Default.FileUpload, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Выбрать файл JSON для импорта")
+                        Text("Выбрать файл JSON библиотеки")
                     }
 
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
-
-                    // Secondary text clipboard options
+                    // Secondary text clipboard options for Library
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -722,7 +790,81 @@ fun SettingsScreen(
                         }
                     }
 
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
+
+                    // SECTION 2: SETTINGS BACKUP
+                    Text(
+                        text = "Настройки приложения",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                    Text(
+                        text = "Сохраните или восстановите персональные параметры (шкалы, темы, стили карточек, цели и видимость модулей)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                val timeStamp = SimpleDateFormat("yyyyMMdd_HHmm", Locale.getDefault()).format(Date())
+                                exportSettingsFileLauncher.launch("readtracker_settings_$timeStamp.json")
+                            },
+                            modifier = Modifier.weight(1f).testTag("export_settings_file_btn"),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                        ) {
+                            Icon(Icons.Default.FileDownload, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Экспорт настроек", fontSize = 12.sp)
+                        }
+
+                        Button(
+                            onClick = {
+                                importSettingsFileLauncher.launch(arrayOf("application/json", "text/*", "*/*"))
+                            },
+                            modifier = Modifier.weight(1f).testTag("import_settings_file_btn"),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant, contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
+                        ) {
+                            Icon(Icons.Default.FileUpload, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Импорт настроек", fontSize = 12.sp)
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                settingsExportJsonText = viewModel.exportSettingsJson()
+                                showSettingsExportDialog = true
+                            },
+                            modifier = Modifier.weight(1f).testTag("export_settings_text_btn")
+                        ) {
+                            Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Текст настроек", fontSize = 12.sp)
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                settingsImportJsonText = ""
+                                showSettingsImportDialog = true
+                            },
+                            modifier = Modifier.weight(1f).testTag("import_settings_text_btn")
+                        ) {
+                            Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Вставить настройки", fontSize = 12.sp)
+                        }
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
 
                     // Clear library option
                     OutlinedButton(
@@ -915,6 +1057,104 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showClearDataDialog = false }) {
+                    Text("Отмена")
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
+    // Export Settings JSON Dialog
+    if (showSettingsExportDialog) {
+        AlertDialog(
+            onDismissRequest = { showSettingsExportDialog = false },
+            title = { Text("Экспорт настроек (JSON)") },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text("Скопируйте JSON настроек:")
+                    OutlinedTextField(
+                        value = settingsExportJsonText,
+                        onValueChange = {},
+                        readOnly = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        textStyle = MaterialTheme.typography.bodySmall
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        val clip = ClipData.newPlainText("ReadTracker Settings", settingsExportJsonText)
+                        clipboard.setPrimaryClip(clip)
+                        Toast.makeText(context, "Настройки скопированы в буфер обмена", Toast.LENGTH_SHORT).show()
+                        showSettingsExportDialog = false
+                    }
+                ) {
+                    Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Копировать")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSettingsExportDialog = false }) {
+                    Text("Закрыть")
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
+    // Import Settings JSON Dialog
+    if (showSettingsImportDialog) {
+        AlertDialog(
+            onDismissRequest = { showSettingsImportDialog = false },
+            title = { Text("Импорт настроек (JSON)") },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text("Вставьте JSON с сохранёнными настройками:")
+                    OutlinedTextField(
+                        value = settingsImportJsonText,
+                        onValueChange = { settingsImportJsonText = it },
+                        placeholder = { Text("{\"themeMode\": \"...\", \"uniformHeadersEnabled\": true, ...}") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp),
+                        textStyle = MaterialTheme.typography.bodySmall
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (settingsImportJsonText.isNotBlank()) {
+                            val success = viewModel.importSettingsJson(settingsImportJsonText)
+                            if (success) {
+                                Toast.makeText(context, "Настройки успешно применены!", Toast.LENGTH_SHORT).show()
+                                showSettingsImportDialog = false
+                            } else {
+                                Toast.makeText(context, "Некорректный JSON настроек", Toast.LENGTH_LONG).show()
+                            }
+                        } else {
+                            Toast.makeText(context, "Введите JSON строку", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                ) {
+                    Text("Применить")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSettingsImportDialog = false }) {
                     Text("Отмена")
                 }
             },
