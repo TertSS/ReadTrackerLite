@@ -634,6 +634,74 @@ fun SettingsScreen(
                         onCheckedChange = { viewModel.updateAppSettings(settings.copy(statsShowYearlyGoals = it)) }
                     )
 
+                    if (settings.statsShowYearlyGoals) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 12.dp, top = 4.dp, bottom = 8.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = "Параметры блока целей",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+
+                                SettingToggleRow(
+                                    title = "Иконка кубка",
+                                    subtitle = "Показывать золотой значок кубка рядом с заголовком «ЦЕЛИ»",
+                                    checked = settings.statsShowGoalsTrophy,
+                                    onCheckedChange = { viewModel.updateAppSettings(settings.copy(statsShowGoalsTrophy = it)) }
+                                )
+
+                                SettingToggleRow(
+                                    title = "Цель: Прочитать слов",
+                                    subtitle = "Прогресс по суммарному количеству прочитанных слов",
+                                    checked = settings.statsGoalShowWords,
+                                    onCheckedChange = { viewModel.updateAppSettings(settings.copy(statsGoalShowWords = it)) }
+                                )
+
+                                SettingToggleRow(
+                                    title = "Цель: Прочитать томов",
+                                    subtitle = "Прогресс по числу прочитанных томов",
+                                    checked = settings.statsGoalShowVolumes,
+                                    onCheckedChange = { viewModel.updateAppSettings(settings.copy(statsGoalShowVolumes = it)) }
+                                )
+
+                                SettingToggleRow(
+                                    title = "Цель: Завершить серий",
+                                    subtitle = "Прогресс по завершённым книжным сериям",
+                                    checked = settings.statsGoalShowSeries,
+                                    onCheckedChange = { viewModel.updateAppSettings(settings.copy(statsGoalShowSeries = it)) }
+                                )
+
+                                if (settings.statsShowSinglesCompleted) {
+                                    SettingToggleRow(
+                                        title = "Цель: Завершить синглов",
+                                        subtitle = "Прогресс по завершённым одиночным книгам / ваншотам",
+                                        checked = settings.statsGoalShowSingles,
+                                        onCheckedChange = { viewModel.updateAppSettings(settings.copy(statsGoalShowSingles = it)) }
+                                    )
+                                }
+
+                                SettingToggleRow(
+                                    title = "Цель: Завершить веб",
+                                    subtitle = "Прогресс по завершённым веб-новеллам",
+                                    checked = settings.statsGoalShowWeb,
+                                    onCheckedChange = { viewModel.updateAppSettings(settings.copy(statsGoalShowWeb = it)) }
+                                )
+                            }
+                        }
+                    }
+
                     SettingToggleRow(
                         title = "Прочитано томов",
                         subtitle = "Метрика общего числа прочитанных томов",
@@ -653,6 +721,13 @@ fun SettingsScreen(
                         subtitle = "Количество полностью прочитанных серий произведений",
                         checked = settings.statsShowTitlesCompleted,
                         onCheckedChange = { viewModel.updateAppSettings(settings.copy(statsShowTitlesCompleted = it)) }
+                    )
+
+                    SettingToggleRow(
+                        title = "Завершено синглов",
+                        subtitle = "Метрика завершённых одиночных книг и ваншотов (синглов)",
+                        checked = settings.statsShowSinglesCompleted,
+                        onCheckedChange = { viewModel.updateAppSettings(settings.copy(statsShowSinglesCompleted = it)) }
                     )
 
                     SettingToggleRow(

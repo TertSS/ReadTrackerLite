@@ -27,6 +27,8 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -188,9 +190,18 @@ fun StatsScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.EmojiEvents, contentDescription = null, tint = StarGold, modifier = Modifier.size(24.dp))
-                                Spacer(modifier = Modifier.width(8.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (settings.statsShowGoalsTrophy) {
+                                    Icon(
+                                        imageVector = Icons.Default.EmojiEvents,
+                                        contentDescription = null,
+                                        tint = StarGold,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                }
                                 Text(
                                     text = "ЦЕЛИ",
                                     style = MaterialTheme.typography.titleMedium,
@@ -199,50 +210,78 @@ fun StatsScreen(
                                 )
                             }
 
-                            TextButton(onClick = { showEditGoalsDialog = true }) {
-                                Text("Изменить", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                            TextButton(
+                                onClick = { showEditGoalsDialog = true },
+                                contentPadding = PaddingValues(start = 8.dp, end = 0.dp, top = 2.dp, bottom = 2.dp)
+                            ) {
+                                Text(
+                                    text = "Изменить",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.End
+                                )
                             }
                         }
 
                         // 1. Words Goal Progress
-                        val wordsProgress = if (settings.wordsTarget > 0) (totalWordsRead.toFloat() / settings.wordsTarget).coerceIn(0f, 1f) else 0f
-                        GoalProgressBar(
-                            title = "Прочитать слов",
-                            current = Formatters.formatNumber(totalWordsRead, shorten = settings.shortenNumbers),
-                            target = Formatters.formatNumber(settings.wordsTarget, shorten = settings.shortenNumbers),
-                            progress = wordsProgress,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                        if (settings.statsGoalShowWords) {
+                            val wordsProgress = if (settings.wordsTarget > 0) (totalWordsRead.toFloat() / settings.wordsTarget).coerceIn(0f, 1f) else 0f
+                            GoalProgressBar(
+                                title = "Прочитать слов",
+                                current = Formatters.formatNumber(totalWordsRead, shorten = settings.shortenNumbers),
+                                target = Formatters.formatNumber(settings.wordsTarget, shorten = settings.shortenNumbers),
+                                progress = wordsProgress,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
 
                         // 2. Volumes Goal Progress
-                        val volumesProgress = if (settings.volumesTarget > 0) (totalVolumesRead.toFloat() / settings.volumesTarget).coerceIn(0f, 1f) else 0f
-                        GoalProgressBar(
-                            title = "Прочитать томов",
-                            current = "$totalVolumesRead",
-                            target = "${settings.volumesTarget}",
-                            progress = volumesProgress,
-                            color = MaterialTheme.colorScheme.secondary
-                        )
+                        if (settings.statsGoalShowVolumes) {
+                            val volumesProgress = if (settings.volumesTarget > 0) (totalVolumesRead.toFloat() / settings.volumesTarget).coerceIn(0f, 1f) else 0f
+                            GoalProgressBar(
+                                title = "Прочитать томов",
+                                current = "$totalVolumesRead",
+                                target = "${settings.volumesTarget}",
+                                progress = volumesProgress,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                        }
 
                         // 3. Series Goal Progress
-                        val seriesProgress = if (settings.seriesTarget > 0) (totalSeriesCompleted.toFloat() / settings.seriesTarget).coerceIn(0f, 1f) else 0f
-                        GoalProgressBar(
-                            title = "Завершить серий",
-                            current = "$totalSeriesCompleted",
-                            target = "${settings.seriesTarget}",
-                            progress = seriesProgress,
-                            color = StarGold
-                        )
+                        if (settings.statsGoalShowSeries) {
+                            val seriesProgress = if (settings.seriesTarget > 0) (totalSeriesCompleted.toFloat() / settings.seriesTarget).coerceIn(0f, 1f) else 0f
+                            GoalProgressBar(
+                                title = "Завершить серий",
+                                current = "$totalSeriesCompleted",
+                                target = "${settings.seriesTarget}",
+                                progress = seriesProgress,
+                                color = StarGold
+                            )
+                        }
+
+                        // 3.1. Singles Goal Progress (if enabled)
+                        if (settings.statsGoalShowSingles && settings.statsShowSinglesCompleted && settings.singlesTarget > 0) {
+                            val singlesProgress = (totalSinglesCompleted.toFloat() / settings.singlesTarget).coerceIn(0f, 1f)
+                            GoalProgressBar(
+                                title = "Завершить синглов",
+                                current = "$totalSinglesCompleted",
+                                target = "${settings.singlesTarget}",
+                                progress = singlesProgress,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
 
                         // 4. Web Novels Goal Progress
-                        val webProgress = if (settings.webTarget > 0) (totalCompletedWebNovels.toFloat() / settings.webTarget).coerceIn(0f, 1f) else 0f
-                        GoalProgressBar(
-                            title = "Завершить веб",
-                            current = "$totalCompletedWebNovels",
-                            target = "${settings.webTarget}",
-                            progress = webProgress,
-                            color = Color(0xFF38BDF8)
-                        )
+                        if (settings.statsGoalShowWeb) {
+                            val webProgress = if (settings.webTarget > 0) (totalCompletedWebNovels.toFloat() / settings.webTarget).coerceIn(0f, 1f) else 0f
+                            GoalProgressBar(
+                                title = "Завершить веб",
+                                current = "$totalCompletedWebNovels",
+                                target = "${settings.webTarget}",
+                                progress = webProgress,
+                                color = Color(0xFF38BDF8)
+                            )
+                        }
                     }
                 }
             }
@@ -340,7 +379,7 @@ fun StatsScreen(
                             )
                         }
                     }
-                    if (totalSinglesCompleted > 0) {
+                    if (settings.statsShowSinglesCompleted) {
                         add { mod ->
                             BentoStatCard(
                                 modifier = mod,
@@ -625,11 +664,14 @@ fun StatsScreen(
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.Bold,
                                         maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Text(
                                         text = "${Formatters.formatNumber(book.effectiveWords, shorten = settings.shortenNumbers)} слов (${book.progressDisplay})",
                                         style = MaterialTheme.typography.labelSmall,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
@@ -646,6 +688,7 @@ fun StatsScreen(
         var goalWordsInput by remember { mutableStateOf(settings.wordsTarget.toString()) }
         var goalVolumesInput by remember { mutableStateOf(settings.volumesTarget.toString()) }
         var goalSeriesInput by remember { mutableStateOf(settings.seriesTarget.toString()) }
+        var goalSinglesInput by remember { mutableStateOf(settings.singlesTarget.toString()) }
         var goalWebInput by remember { mutableStateOf(settings.webTarget.toString()) }
 
         AlertDialog(
@@ -662,30 +705,46 @@ fun StatsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    OutlinedTextField(
-                        value = goalWordsInput,
-                        onValueChange = { goalWordsInput = it.filter { ch -> ch.isDigit() } },
-                        label = { Text("Цель по словам (например, 10000000)") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = goalVolumesInput,
-                        onValueChange = { goalVolumesInput = it.filter { ch -> ch.isDigit() } },
-                        label = { Text("Цель по томам (например, 50)") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = goalSeriesInput,
-                        onValueChange = { goalSeriesInput = it.filter { ch -> ch.isDigit() } },
-                        label = { Text("Цель по сериям (например, 15)") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = goalWebInput,
-                        onValueChange = { goalWebInput = it.filter { ch -> ch.isDigit() } },
-                        label = { Text("Цель по веб-новеллам (например, 10)") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    if (settings.statsGoalShowWords) {
+                        OutlinedTextField(
+                            value = goalWordsInput,
+                            onValueChange = { goalWordsInput = it.filter { ch -> ch.isDigit() } },
+                            label = { Text("Цель по словам (например, 10000000)") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    if (settings.statsGoalShowVolumes) {
+                        OutlinedTextField(
+                            value = goalVolumesInput,
+                            onValueChange = { goalVolumesInput = it.filter { ch -> ch.isDigit() } },
+                            label = { Text("Цель по томам (например, 50)") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    if (settings.statsGoalShowSeries) {
+                        OutlinedTextField(
+                            value = goalSeriesInput,
+                            onValueChange = { goalSeriesInput = it.filter { ch -> ch.isDigit() } },
+                            label = { Text("Цель по сериям (например, 15)") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    if (settings.statsGoalShowSingles && settings.statsShowSinglesCompleted) {
+                        OutlinedTextField(
+                            value = goalSinglesInput,
+                            onValueChange = { goalSinglesInput = it.filter { ch -> ch.isDigit() } },
+                            label = { Text("Цель по синглам (например, 10)") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    if (settings.statsGoalShowWeb) {
+                        OutlinedTextField(
+                            value = goalWebInput,
+                            onValueChange = { goalWebInput = it.filter { ch -> ch.isDigit() } },
+                            label = { Text("Цель по веб-новеллам (например, 10)") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
             },
             confirmButton = {
@@ -694,12 +753,14 @@ fun StatsScreen(
                         val w = goalWordsInput.toLongOrNull() ?: 10_000_000L
                         val v = goalVolumesInput.toIntOrNull() ?: 50
                         val s = goalSeriesInput.toIntOrNull() ?: 15
+                        val single = goalSinglesInput.toIntOrNull() ?: 10
                         val web = goalWebInput.toIntOrNull() ?: 10
                         viewModel.updateAppSettings(
                             settings.copy(
                                 wordsTarget = w,
                                 volumesTarget = v,
                                 seriesTarget = s,
+                                singlesTarget = single,
                                 webTarget = web
                             )
                         )

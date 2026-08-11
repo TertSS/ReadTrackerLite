@@ -57,6 +57,14 @@ data class AppSettings(
     val vnTarget: Int = 5,
     val endingsTarget: Int = 20,
     
+    // Goals item & trophy toggles
+    val statsShowGoalsTrophy: Boolean = true,
+    val statsGoalShowWords: Boolean = true,
+    val statsGoalShowVolumes: Boolean = true,
+    val statsGoalShowSeries: Boolean = true,
+    val statsGoalShowSingles: Boolean = true,
+    val statsGoalShowWeb: Boolean = true,
+    
     // Stats singles display
     val statsShowSinglesCompleted: Boolean = true,
     
