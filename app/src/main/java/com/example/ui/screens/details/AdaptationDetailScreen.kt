@@ -328,7 +328,7 @@ fun AdaptationDetailScreen(
                                 .padding(16.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            val scoreStr = if (adaptation.rating > 0f) Formatters.formatRating(adaptation.rating, settings.ratingScale) else "Без оценки"
+                            val scoreStr = if (adaptation.rating > 0f) Formatters.formatRating(adaptation.rating, settings.ratingScale, settings.allowDecimalRating) else "Без оценки"
                             Text(
                                 text = "ОЦЕНКА ($scoreStr)",
                                 style = MaterialTheme.typography.labelSmall,
@@ -340,6 +340,7 @@ fun AdaptationDetailScreen(
                             StarRatingBar(
                                 rating = adaptation.rating,
                                 scale = settings.ratingScale,
+                                allowDecimal = settings.allowDecimalRating,
                                 editable = true,
                                 onRatingChanged = { newRating ->
                                     viewModel.saveAdaptation(adaptation.copy(rating = newRating))

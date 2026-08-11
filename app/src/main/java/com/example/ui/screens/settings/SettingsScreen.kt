@@ -191,6 +191,22 @@ fun SettingsScreen(
                             )
                         }
                     }
+
+                    SettingToggleRow(
+                        title = "Дробные оценки (3.3, 4.5, 7.6 и т.д.)",
+                        subtitle = "Возможность выставлять точную оценку с десятыми долями с помощью ползунка",
+                        checked = settings.allowDecimalRating,
+                        onCheckedChange = { viewModel.updateAppSettings(settings.copy(allowDecimalRating = it)) }
+                    )
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+
+                    SettingToggleRow(
+                        title = "Запоминать последнюю вкладку",
+                        subtitle = "При закрытии и повторном открытии оставаться на той же вкладке (например, Отзывы или Тир-лист)",
+                        checked = settings.rememberLastTab,
+                        onCheckedChange = { viewModel.updateAppSettings(settings.copy(rememberLastTab = it)) }
+                    )
                 }
             }
 
@@ -541,10 +557,17 @@ fun SettingsScreen(
                     )
 
                     SettingToggleRow(
-                        title = "Завершено серий",
-                        subtitle = "Количество полностью прочитанных серий произведений",
+                        title = "Серий прочитано",
+                        subtitle = "Количество полностью прочитанных многотомных серий",
                         checked = settings.statsShowTitlesCompleted,
                         onCheckedChange = { viewModel.updateAppSettings(settings.copy(statsShowTitlesCompleted = it)) }
+                    )
+
+                    SettingToggleRow(
+                        title = "Синглов прочитано",
+                        subtitle = "Количество прочитанных одиночных книг и синглов",
+                        checked = settings.statsShowSinglesCompleted,
+                        onCheckedChange = { viewModel.updateAppSettings(settings.copy(statsShowSinglesCompleted = it)) }
                     )
 
                     SettingToggleRow(

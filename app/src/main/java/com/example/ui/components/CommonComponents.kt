@@ -249,57 +249,103 @@ fun FormatBadge(
 fun StarRatingBar(
     rating: Float, // 0..10
     scale: RatingScale = RatingScale.STARS_10,
+    allowDecimal: Boolean = false,
     editable: Boolean = false,
     onRatingChanged: ((Float) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val maxCount = if (scale == RatingScale.STARS_5) 5 else 10
     val effectiveRating = if (scale == RatingScale.STARS_5) rating / 2f else rating
+    val maxVal = if (scale == RatingScale.STARS_5) 5f else 10f
 
-    Row(
+    Column(
         modifier = modifier.testTag("star_rating_bar"),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        for (i in 1..maxCount) {
-            val isFilled = i <= Math.round(effectiveRating)
-            val icon = if (isFilled) Icons.Default.Star else Icons.Default.StarBorder
-            val tint = if (isFilled) StarGold else MaterialTheme.colorScheme.surfaceContainerHighest
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            val starBtnSize = if (editable) (if (maxCount == 10) 28.dp else 36.dp) else 18.dp
+            val starIconSize = if (editable) (if (maxCount == 10) 22.dp else 28.dp) else 15.dp
 
-            IconButton(
-                onClick = {
-                    if (editable && onRatingChanged != null) {
-                        val newRating = if (scale == RatingScale.STARS_5) i * 2f else i.toFloat()
-                        if (effectiveRating == i.toFloat()) {
-                            onRatingChanged(0f) // Reset
-                        } else {
-                            onRatingChanged(newRating)
+            for (i in 1..maxCount) {
+                val isFilled = i <= effectiveRating + 0.25f
+                val isHalf = !isFilled && i <= effectiveRating + 0.75f
+                val icon = when {
+                    isFilled -> Icons.Default.Star
+                    isHalf -> Icons.Default.StarHalf
+                    else -> Icons.Default.StarBorder
+                }
+                val tint = if (isFilled || isHalf) StarGold else MaterialTheme.colorScheme.surfaceContainerHighest
+
+                IconButton(
+                    onClick = {
+                        if (editable && onRatingChanged != null) {
+                            val newRating = if (scale == RatingScale.STARS_5) i * 2f else i.toFloat()
+                            if (effectiveRating == i.toFloat()) {
+                                onRatingChanged(0f) // Reset
+                            } else {
+                                onRatingChanged(newRating)
+                            }
                         }
-                    }
-                },
-                enabled = editable,
-                modifier = Modifier.size(if (editable) 36.dp else 20.dp)
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = "Звезда $i",
-                    tint = tint,
-                    modifier = Modifier.size(if (editable) 28.dp else 16.dp)
-                )
+                    },
+                    enabled = editable,
+                    modifier = Modifier.size(starBtnSize)
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = "Звезда $i",
+                        tint = tint,
+                        modifier = Modifier.size(starIconSize)
+                    )
+                }
+            }
+
+            if (editable && rating > 0f) {
+                Spacer(modifier = Modifier.width(4.dp))
+                IconButton(
+                    onClick = { onRatingChanged?.invoke(0f) },
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Clear,
+                        contentDescription = "Сбросить оценку",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
             }
         }
 
-        if (editable && rating > 0f) {
-            Spacer(modifier = Modifier.width(4.dp))
-            IconButton(
-                onClick = { onRatingChanged?.invoke(0f) },
-                modifier = Modifier.size(32.dp)
+        // Decimal rating slider for precise tuning (e.g. 3.3, 4.5, 7.6)
+        if (editable && allowDecimal && onRatingChanged != null) {
+            Spacer(modifier = Modifier.height(2.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Clear,
-                    contentDescription = "Сбросить оценку",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp)
+                Text(
+                    text = if (rating > 0f) String.format(java.util.Locale.US, "%.1f", effectiveRating) else "0.0",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.width(28.dp)
+                )
+                Slider(
+                    value = effectiveRating.coerceIn(0f, maxVal),
+                    onValueChange = { valRounded ->
+                        val stepRounded = (Math.round(valRounded * 10f) / 10f).coerceIn(0f, maxVal)
+                        val actualRating = if (scale == RatingScale.STARS_5) stepRounded * 2f else stepRounded
+                        onRatingChanged(actualRating)
+                    },
+                    valueRange = 0f..maxVal,
+                    steps = (maxVal * 10).toInt() - 1,
+                    modifier = Modifier.weight(1f)
                 )
             }
         }

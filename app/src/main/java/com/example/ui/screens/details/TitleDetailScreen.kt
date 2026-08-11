@@ -413,7 +413,7 @@ fun TitleDetailScreen(
                                 .padding(16.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            val scoreStr = if (book.rating > 0f) Formatters.formatRating(book.rating, settings.ratingScale) else "Без оценки"
+                            val scoreStr = if (book.rating > 0f) Formatters.formatRating(book.rating, settings.ratingScale, settings.allowDecimalRating) else "Без оценки"
                             Text(
                                 text = "ОЦЕНКА ($scoreStr)",
                                 style = MaterialTheme.typography.labelSmall,
@@ -425,6 +425,7 @@ fun TitleDetailScreen(
                             StarRatingBar(
                                 rating = book.rating,
                                 scale = settings.ratingScale,
+                                allowDecimal = settings.allowDecimalRating,
                                 editable = true,
                                 onRatingChanged = { newRating ->
                                     viewModel.saveBook(book.copy(rating = newRating))

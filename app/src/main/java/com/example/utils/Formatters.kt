@@ -49,14 +49,22 @@ object Formatters {
         }
     }
 
-    fun formatRating(rating: Float, scale: com.example.data.models.RatingScale): String {
+    fun formatRating(rating: Float, scale: com.example.data.models.RatingScale, allowDecimal: Boolean = true): String {
         if (rating <= 0f) return "—"
         return if (scale == com.example.data.models.RatingScale.STARS_5) {
-            val star5 = Math.round(rating / 2f).coerceIn(1, 5)
-            "$star5/5"
+            val star5 = (rating / 2f).coerceIn(0.1f, 5f)
+            if (allowDecimal && (star5 % 1f != 0f)) {
+                String.format(Locale.US, "%.1f/5", star5)
+            } else {
+                "${Math.round(star5)}/5"
+            }
         } else {
-            val star10 = Math.round(rating).coerceIn(1, 10)
-            "$star10/10"
+            val star10 = rating.coerceIn(0.1f, 10f)
+            if (allowDecimal && (star10 % 1f != 0f)) {
+                String.format(Locale.US, "%.1f/10", star10)
+            } else {
+                "${Math.round(star10)}/10"
+            }
         }
     }
 }

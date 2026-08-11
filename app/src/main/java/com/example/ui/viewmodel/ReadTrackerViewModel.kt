@@ -70,6 +70,13 @@ class ReadTrackerViewModel(
                 repository.cleanupOrphanReviews()
             }
         }
+        viewModelScope.launch {
+            repository.settingsFlow.firstOrNull()?.let { settings ->
+                if (settings.rememberLastTab && settings.lastActiveTab.isNotBlank()) {
+                    currentTab.value = settings.lastActiveTab
+                }
+            }
+        }
     }
 
     // Filtered Books Flow
@@ -175,6 +182,9 @@ class ReadTrackerViewModel(
         selectedAdaptationId.value = null
         editingBook.value = null
         editingAdaptation.value = null
+        if (appSettings.value.rememberLastTab) {
+            updateAppSettings(appSettings.value.copy(lastActiveTab = tab))
+        }
     }
 
     fun openBookDetails(id: String) {
@@ -352,6 +362,40 @@ class ReadTrackerViewModel(
     fun deleteTierRow(row: TierListRow) {
         viewModelScope.launch {
             repository.deleteTierRow(row)
+        }
+    }
+
+    fun updateTierItemCover(itemId: String, newCoverUrl: String?) {
+        viewModelScope.launch {
+            val rows = allTierRows.value.toMutableList()
+            var modified = false
+            for (i in rows.indices) {
+                val row = rows[i]
+                val itemIdx = row.items.indexOfFirst { it.id == itemId }
+                if (itemIdx != -1) {
+                    val updatedItems = row.items.toMutableList()
+                    val itm = updatedItems[itemIdx]
+                    updatedItems[itemIdx] = itm.copy(coverUrl = newCoverUrl)
+                    rows[i] = row.copy(items = updatedItems)
+                    modified = true
+                    // If this item has a sourceId in books or adaptations, also update the source cover
+                    if (itm.sourceId != null) {
+                        val book = allBooks.value.find { it.id == itm.sourceId }
+                        if (book != null) {
+                            repository.updateBook(book.copy(coverUrl = newCoverUrl))
+                        } else {
+                            val ad = allAdaptations.value.find { it.id == itm.sourceId }
+                            if (ad != null) {
+                                repository.updateAdaptation(ad.copy(coverUrl = newCoverUrl))
+                            }
+                        }
+                    }
+                    break
+                }
+            }
+            if (modified) {
+                repository.setTierRows(rows)
+            }
         }
     }
 

@@ -14,6 +14,7 @@ data class AppSettings(
     val genresEnabled: Boolean = true,
     val ratingEnabled: Boolean = true,
     val ratingScale: RatingScale = RatingScale.STARS_10,
+    val allowDecimalRating: Boolean = true,
     val goalsEnabled: Boolean = true,
     val bookmarksEnabled: Boolean = true,
     val searchFilterEnabled: Boolean = true,
@@ -53,8 +54,16 @@ data class AppSettings(
     val volumesTarget: Int = 50,
     val webTarget: Int = 10,
     val seriesTarget: Int = 15,
+    val singlesTarget: Int = 10,
     val vnTarget: Int = 5,
     val endingsTarget: Int = 20,
+    
+    // Stats singles display
+    val statsShowSinglesCompleted: Boolean = true,
+    
+    // Session state
+    val rememberLastTab: Boolean = false,
+    val lastActiveTab: String = "library",
     
     // Tier list active mode
     val tierListIndependent: Boolean = false,
