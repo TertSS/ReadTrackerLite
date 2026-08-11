@@ -453,6 +453,41 @@ fun SettingsScreen(
 
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
 
+                    // Library Status Bar Style
+                    if (settings.showStatusFiltersInLibrary) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Column {
+                                Text("Стиль блока статусов библиотеки", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                                Text("Выберите оформление панели переключения статусов", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                FilterChip(
+                                    selected = settings.libraryStatusBarStyle == "PILLS",
+                                    onClick = { viewModel.updateAppSettings(settings.copy(libraryStatusBarStyle = "PILLS")) },
+                                    label = { Text("Капсулы") }
+                                )
+                                FilterChip(
+                                    selected = settings.libraryStatusBarStyle == "SEGMENTED",
+                                    onClick = { viewModel.updateAppSettings(settings.copy(libraryStatusBarStyle = "SEGMENTED")) },
+                                    label = { Text("Сегментная") }
+                                )
+                                FilterChip(
+                                    selected = settings.libraryStatusBarStyle == "CARDS_COUNT",
+                                    onClick = { viewModel.updateAppSettings(settings.copy(libraryStatusBarStyle = "CARDS_COUNT")) },
+                                    label = { Text("Счётчики") }
+                                )
+                            }
+                        }
+
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+                    }
+
                     // Card Style for items without cover
                     Column(
                         modifier = Modifier.fillMaxWidth(),
@@ -486,6 +521,34 @@ fun SettingsScreen(
                                 onClick = { viewModel.updateAppSettings(settings.copy(coverlessCardStyle = "COMPACT")) },
                                 label = { Text("Компактный") }
                             )
+                        }
+                    }
+
+                    // Compact tag position setting
+                    if (settings.coverlessCardStyle == "COMPACT") {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Column {
+                                Text("Расположение тега формата (LN/Веб)", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                                Text("Где отображать тег в компактном режиме карточки", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                FilterChip(
+                                    selected = settings.compactTagPosition == "UNDER_STATUS",
+                                    onClick = { viewModel.updateAppSettings(settings.copy(compactTagPosition = "UNDER_STATUS")) },
+                                    label = { Text("Под статусом (перед томами)") }
+                                )
+                                FilterChip(
+                                    selected = settings.compactTagPosition == "LEFT_OF_STATUS",
+                                    onClick = { viewModel.updateAppSettings(settings.copy(compactTagPosition = "LEFT_OF_STATUS")) },
+                                    label = { Text("Возле статуса слева") }
+                                )
+                            }
                         }
                     }
 

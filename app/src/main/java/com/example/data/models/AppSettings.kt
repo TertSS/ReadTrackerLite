@@ -25,7 +25,9 @@ data class AppSettings(
     val sortByStatus: Boolean = true,
     val showCoversInLibrary: Boolean = true,
     val showStatusFiltersInLibrary: Boolean = false,
+    val libraryStatusBarStyle: String = "PILLS", // PILLS, SEGMENTED, CARDS_COUNT
     val coverlessCardStyle: String = "CLASSIC", // CLASSIC, MINIMAL, GRADIENT, COMPACT
+    val compactTagPosition: String = "UNDER_STATUS", // UNDER_STATUS, LEFT_OF_STATUS
     val statsActiveTab: String = "ALL", // ALL, BOOKS, ADAPTATIONS
     val statsDefaultTab: String = "ALL", // ALL, BOOKS, ADAPTATIONS
     

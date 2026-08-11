@@ -3,9 +3,15 @@ package com.example.ui.screens.tier
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.Rect as AndroidRect
 import android.graphics.RectF
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
+import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
@@ -54,10 +60,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.Coil
+import coil.ImageLoader
+import coil.request.ImageRequest
+import coil.request.SuccessResult
 import com.example.data.models.*
 import com.example.ui.components.*
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.ReadTrackerViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 
 data class DropTarget(
@@ -175,9 +191,11 @@ fun TierListScreen(
     val settings by viewModel.appSettings.collectAsStateWithLifecycle()
 
     val haptic = LocalHapticFeedback.current
+    val coroutineScope = rememberCoroutineScope()
     val dragState = remember { TierDragDropState() }
     var activeDraggedItem by remember { mutableStateOf<TierItem?>(null) }
     var activeDraggedFromRowId by remember { mutableStateOf<String?>(null) }
+    var isExporting by remember { mutableStateOf(false) }
 
     val handleStartDrag: (TierItem, String?, Offset) -> Unit = { item, fromRowId, pos ->
         activeDraggedItem = item
@@ -202,7 +220,8 @@ fun TierListScreen(
                 itemId = item.id,
                 fromRowId = fromRowId,
                 toRowId = dropTarget.rowId,
-                targetIndex = dropTarget.insertIndex
+                targetIndex = dropTarget.insertIndex,
+                mode = currentMode.name
             )
         }
     }
@@ -219,9 +238,13 @@ fun TierListScreen(
     var editingRow by remember { mutableStateOf<TierListRow?>(null) }
     var selectedItemForSheet by remember { mutableStateOf<Pair<TierItem, String?>?>(null) } // item, fromRowId
     var itemForCoverEdit by remember { mutableStateOf<TierItem?>(null) }
+
+    LaunchedEffect(currentMode) {
+        viewModel.ensureTierRowsExist(currentMode)
+    }
     
-    val visibleTierRows = remember(tierRows) {
-        tierRows.filter { it.id != "__UNASSIGNED_CUSTOM__" }
+    val visibleTierRows = remember(tierRows, currentMode) {
+        tierRows.filter { it.mode == currentMode.name && !it.id.startsWith("__UNASSIGNED_CUSTOM") }
     }
 
     val unassignedItems = remember(tierRows, allBooks, allAdaptations, currentMode) {
@@ -255,19 +278,38 @@ fun TierListScreen(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         IconButton(
                             onClick = {
-                                exportTierListToGallery(
-                                    context = context,
-                                    tierRows = visibleTierRows,
-                                    modeLabel = if (currentMode == LibraryMode.BOOKS) "Книги и новеллы" else "Экранизации"
-                                )
+                                if (!isExporting) {
+                                    isExporting = true
+                                    val modeLabel = if (currentMode == LibraryMode.BOOKS) "Книги и новеллы" else "Экранизации"
+                                    Toast.makeText(context, "Генерация тир-листа с обложками...", Toast.LENGTH_SHORT).show()
+                                    coroutineScope.launch {
+                                        exportTierListToGallery(
+                                            context = context,
+                                            tierRows = visibleTierRows,
+                                            allBooks = allBooks,
+                                            allAdaptations = allAdaptations,
+                                            modeLabel = modeLabel
+                                        )
+                                        isExporting = false
+                                    }
+                                }
                             },
+                            enabled = !isExporting,
                             modifier = Modifier.testTag("tier_download_btn")
                         ) {
-                            Icon(
-                                Icons.Default.Download,
-                                contentDescription = "Скачать в галерею",
-                                tint = MaterialTheme.colorScheme.tertiary
-                            )
+                            if (isExporting) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.tertiary
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Default.Download,
+                                    contentDescription = "Скачать в галерею",
+                                    tint = MaterialTheme.colorScheme.tertiary
+                                )
+                            }
                         }
 
                         IconButton(
@@ -291,7 +333,10 @@ fun TierListScreen(
                 // Switch between Books & Adaptations
                 ModeTogglePill(
                     currentMode = currentMode,
-                    onModeChanged = { viewModel.libraryMode.value = it }
+                    onModeChanged = { newMode ->
+                        viewModel.libraryMode.value = newMode
+                        viewModel.ensureTierRowsExist(newMode)
+                    }
                 )
             }
         }
@@ -703,7 +748,7 @@ fun TierListScreen(
                         FilledTonalButton(
                             onClick = {
                                 if (currentIndex > 0) {
-                                    viewModel.moveTierItem(item.id, fromRowId, fromRowId, currentIndex - 1)
+                                    viewModel.moveTierItem(item.id, fromRowId, fromRowId, currentIndex - 1, mode = currentMode.name)
                                     selectedItemForSheet = null
                                 }
                             },
@@ -718,7 +763,7 @@ fun TierListScreen(
                         FilledTonalButton(
                             onClick = {
                                 if (currentIndex < currentRow.items.size - 1) {
-                                    viewModel.moveTierItem(item.id, fromRowId, fromRowId, currentIndex + 2)
+                                    viewModel.moveTierItem(item.id, fromRowId, fromRowId, currentIndex + 2, mode = currentMode.name)
                                     selectedItemForSheet = null
                                 }
                             },
@@ -746,7 +791,7 @@ fun TierListScreen(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
                                 .clickable {
-                                    viewModel.moveTierItem(item.id, fromRowId, targetRow.id)
+                                    viewModel.moveTierItem(item.id, fromRowId, targetRow.id, mode = currentMode.name)
                                     selectedItemForSheet = null
                                 },
                             color = if (isCurrent) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
@@ -781,7 +826,7 @@ fun TierListScreen(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(10.dp))
                             .clickable {
-                                viewModel.moveTierItem(item.id, fromRowId, null)
+                                viewModel.moveTierItem(item.id, fromRowId, null, mode = currentMode.name)
                                 selectedItemForSheet = null
                             },
                         color = MaterialTheme.colorScheme.surfaceContainerLow
@@ -806,7 +851,7 @@ fun TierListScreen(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(10.dp))
                             .clickable {
-                                viewModel.deleteTierItem(item.id, fromRowId)
+                                viewModel.deleteTierItem(item.id, fromRowId, mode = currentMode.name)
                                 selectedItemForSheet = null
                             },
                         color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
@@ -931,7 +976,7 @@ fun TierListScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
-                                viewModel.applyTierPreset(preset)
+                                viewModel.applyTierPreset(preset, mode = currentMode.name)
                                 showPresetMenu = false
                             },
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
@@ -1014,7 +1059,8 @@ fun TierListScreen(
                             viewModel.addTierRow(
                                 name = rowName.trim(),
                                 color = selectedColor,
-                                textColor = 0xFFFFFFFFL
+                                textColor = 0xFFFFFFFFL,
+                                mode = currentMode.name
                             )
                             showAddRowDialog = false
                         }
@@ -1125,7 +1171,8 @@ fun TierListScreen(
                             viewModel.addIndependentTierItem(
                                 title = customTitle.trim(),
                                 coverUrl = customCoverUrl.trim().ifEmpty { null },
-                                targetRowId = targetRowId
+                                targetRowId = targetRowId,
+                                mode = currentMode.name
                             )
                             showAddCustomItemDialog = false
                         }
@@ -1427,118 +1474,262 @@ fun colorToHex(colorLong: Long): String {
     return "#" + hex.substring(2)
 }
 
-fun exportTierListToGallery(
+suspend fun loadCoverBitmap(context: Context, urlOrUri: String?): Bitmap? {
+    if (urlOrUri.isNullOrBlank()) return null
+    return withContext(Dispatchers.IO) {
+        try {
+            // First try with Coil ImageLoader
+            val loader = ImageLoader(context)
+            val request = ImageRequest.Builder(context)
+                .data(urlOrUri)
+                .allowHardware(false)
+                .build()
+            val result = (loader.execute(request) as? SuccessResult)?.drawable
+            val bmp = (result as? BitmapDrawable)?.bitmap
+            if (bmp != null) return@withContext bmp
+
+            // Fallback for content:// URIs
+            if (urlOrUri.startsWith("content://")) {
+                try {
+                    val uri = Uri.parse(urlOrUri)
+                    context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                        return@withContext BitmapFactory.decodeStream(inputStream)
+                    }
+                } catch (e: Throwable) {
+                    // ignore
+                }
+            } else if (urlOrUri.startsWith("file://") || urlOrUri.startsWith("/")) {
+                val cleanPath = urlOrUri.removePrefix("file://")
+                return@withContext BitmapFactory.decodeFile(cleanPath)
+            }
+            null
+        } catch (e: Throwable) {
+            null
+        }
+    }
+}
+
+suspend fun exportTierListToGallery(
     context: Context,
     tierRows: List<TierListRow>,
+    allBooks: List<BookTitle> = emptyList(),
+    allAdaptations: List<Adaptation> = emptyList(),
     modeLabel: String
-) {
+) = withContext(Dispatchers.IO) {
     if (tierRows.isEmpty()) {
-        Toast.makeText(context, "Тир-лист пуст!", Toast.LENGTH_SHORT).show()
-        return
+        withContext(Dispatchers.Main) {
+            Toast.makeText(context, "Тир-лист пуст!", Toast.LENGTH_SHORT).show()
+        }
+        return@withContext
     }
 
     try {
-        val width = 1080
-        val rowHeight = 160
-        val headerHeight = 140
-        val footerHeight = 60
-        val totalHeight = headerHeight + (tierRows.size * rowHeight) + footerHeight
+        val booksMap = allBooks.associateBy { it.id }
+        val adapMap = allAdaptations.associateBy { it.id }
+
+        // Preload cover bitmaps in parallel
+        val allItems = tierRows.flatMap { it.items }.distinctBy { it.id }
+        val loadedBitmaps = coroutineScope {
+            allItems.map { item ->
+                async {
+                    val coverToLoad = item.coverUrl
+                        ?: item.sourceId?.let { srcId -> booksMap[srcId]?.coverUrl ?: adapMap[srcId]?.coverUrl }
+                    item.id to loadCoverBitmap(context, coverToLoad)
+                }
+            }.awaitAll().toMap()
+        }
+
+        // Layout measurements
+        val maxItemsInRow = tierRows.maxOfOrNull { it.items.size } ?: 0
+        val headerWidth = 170f
+        val itemWidth = 100f
+        val itemHeight = 140f
+        val itemMargin = 12f
+        val paddingHorizontal = 24f
+
+        val calculatedWidth = (headerWidth + paddingHorizontal * 2 + (maxItemsInRow * (itemWidth + itemMargin)) + 24f).toInt()
+        val width = maxOf(1200, calculatedWidth)
+
+        val rowHeight = (itemHeight + 24f)
+        val headerSectionHeight = 140f
+        val footerSectionHeight = 64f
+        val totalHeight = (headerSectionHeight + (tierRows.size * (rowHeight + 10f)) + footerSectionHeight).toInt()
 
         val bitmap = Bitmap.createBitmap(width, totalHeight, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
 
         // Background
         val bgPaint = Paint().apply {
-            color = android.graphics.Color.parseColor("#131217")
+            color = android.graphics.Color.parseColor("#121118")
             style = Paint.Style.FILL
         }
         canvas.drawRect(0f, 0f, width.toFloat(), totalHeight.toFloat(), bgPaint)
 
-        // Header Background & Title
+        // Top Header bar
+        val topBarPaint = Paint().apply {
+            color = android.graphics.Color.parseColor("#1A1924")
+            style = Paint.Style.FILL
+        }
+        canvas.drawRect(0f, 0f, width.toFloat(), headerSectionHeight - 16f, topBarPaint)
+
+        // Header Title & Subtitle
         val titlePaint = Paint().apply {
             color = android.graphics.Color.WHITE
-            textSize = 48f
+            textSize = 40f
             isFakeBoldText = true
             isAntiAlias = true
         }
         val subtitlePaint = Paint().apply {
-            color = android.graphics.Color.parseColor("#9E9DA8")
-            textSize = 24f
+            color = android.graphics.Color.parseColor("#A5A3B8")
+            textSize = 22f
             isAntiAlias = true
         }
-        canvas.drawText("ТИР-ЛИСТ • $modeLabel", 40f, 70f, titlePaint)
-        canvas.drawText("Создано в приложении ReadTracker", 40f, 110f, subtitlePaint)
+        canvas.drawText("ТИР-ЛИСТ • ${modeLabel.uppercase()}", 40f, 62f, titlePaint)
+        canvas.drawText("ReadTracker • Рейтинг тайтлов", 40f, 102f, subtitlePaint)
 
-        var currentY = headerHeight.toFloat()
+        var currentY = headerSectionHeight
 
         tierRows.forEach { row ->
-            // Row background
+            val rowY = currentY
+            val actualRowHeight = rowHeight
+            val rowRect = RectF(paddingHorizontal, rowY, width.toFloat() - paddingHorizontal, rowY + actualRowHeight)
+
+            // Row background card
             val rowBgPaint = Paint().apply {
-                color = android.graphics.Color.parseColor("#1D1C24")
+                color = android.graphics.Color.parseColor("#1C1B24")
                 style = Paint.Style.FILL
             }
-            canvas.drawRect(0f, currentY, width.toFloat(), currentY + rowHeight - 8f, rowBgPaint)
+            val rowBorderPaint = Paint().apply {
+                color = android.graphics.Color.parseColor("#2E2D3B")
+                style = Paint.Style.STROKE
+                strokeWidth = 2f
+            }
+            canvas.drawRoundRect(rowRect, 14f, 14f, rowBgPaint)
+            canvas.drawRoundRect(rowRect, 14f, 14f, rowBorderPaint)
 
-            // Tier Name Header Box
+            // Tier Badge Left Box
+            val headerBoxRect = RectF(paddingHorizontal, rowY, paddingHorizontal + headerWidth, rowY + actualRowHeight)
             val headerBoxPaint = Paint().apply {
                 color = row.color.toInt()
                 style = Paint.Style.FILL
             }
-            val headerWidth = 160f
-            canvas.drawRect(0f, currentY, headerWidth, currentY + rowHeight - 8f, headerBoxPaint)
+            val headerPath = Path().apply {
+                addRoundRect(
+                    headerBoxRect,
+                    floatArrayOf(14f, 14f, 0f, 0f, 0f, 0f, 14f, 14f),
+                    Path.Direction.CW
+                )
+            }
+            canvas.drawPath(headerPath, headerBoxPaint)
 
             // Tier Name Text
             val textPaint = Paint().apply {
                 color = row.textColor.toInt()
-                textSize = 36f
+                textSize = 34f
                 isFakeBoldText = true
                 isAntiAlias = true
                 textAlign = Paint.Align.CENTER
             }
-            val textY = currentY + (rowHeight - 8f) / 2f - (textPaint.descent() + textPaint.ascent()) / 2f
-            canvas.drawText(row.name, headerWidth / 2f, textY, textPaint)
+            val textY = rowY + actualRowHeight / 2f - (textPaint.descent() + textPaint.ascent()) / 2f
+            canvas.drawText(row.name, paddingHorizontal + headerWidth / 2f, textY, textPaint)
 
             // Draw items in row
-            var itemX = headerWidth + 20f
-            val itemWidth = 100f
-            val itemHeight = 130f
-            val itemMargin = 16f
-
-            val itemBgPaint = Paint().apply {
-                color = android.graphics.Color.parseColor("#2B2A36")
-                style = Paint.Style.FILL
-            }
-            val itemBorderPaint = Paint().apply {
-                color = android.graphics.Color.parseColor("#444352")
-                style = Paint.Style.STROKE
-                strokeWidth = 2f
-            }
-            val itemTextPaint = Paint().apply {
-                color = android.graphics.Color.WHITE
-                textSize = 18f
-                isAntiAlias = true
-                textAlign = Paint.Align.CENTER
-            }
+            var itemX = paddingHorizontal + headerWidth + 16f
+            val itemY = rowY + (actualRowHeight - itemHeight) / 2f
 
             row.items.forEach { item ->
-                if (itemX + itemWidth < width - 20f) {
-                    val rect = RectF(itemX, currentY + 10f, itemX + itemWidth, currentY + 10f + itemHeight)
-                    canvas.drawRoundRect(rect, 8f, 8f, itemBgPaint)
-                    canvas.drawRoundRect(rect, 8f, 8f, itemBorderPaint)
-
-                    val truncated = if (item.title.length > 12) item.title.take(10) + "…" else item.title
-                    canvas.drawText(truncated, itemX + itemWidth / 2f, currentY + 10f + itemHeight - 16f, itemTextPaint)
-
-                    itemX += itemWidth + itemMargin
+                val itemRect = RectF(itemX, itemY, itemX + itemWidth, itemY + itemHeight)
+                val itemPath = Path().apply {
+                    addRoundRect(itemRect, 10f, 10f, Path.Direction.CW)
                 }
+
+                // Placeholder / Card background
+                val itemBgPaint = Paint().apply {
+                    color = android.graphics.Color.parseColor("#292834")
+                    style = Paint.Style.FILL
+                }
+                canvas.drawPath(itemPath, itemBgPaint)
+
+                val coverBitmap = loadedBitmaps[item.id]
+                if (coverBitmap != null) {
+                    canvas.save()
+                    canvas.clipPath(itemPath)
+
+                    // Calculate center-crop
+                    val srcRatio = coverBitmap.width.toFloat() / coverBitmap.height.toFloat()
+                    val dstRatio = itemWidth / itemHeight
+
+                    val cropSrc = if (srcRatio > dstRatio) {
+                        val newWidth = (coverBitmap.height * dstRatio).toInt()
+                        val offset = (coverBitmap.width - newWidth) / 2
+                        AndroidRect(offset, 0, offset + newWidth, coverBitmap.height)
+                    } else {
+                        val newHeight = (coverBitmap.width / dstRatio).toInt()
+                        val offset = (coverBitmap.height - newHeight) / 2
+                        AndroidRect(0, offset, coverBitmap.width, offset + newHeight)
+                    }
+
+                    canvas.drawBitmap(coverBitmap, cropSrc, itemRect, Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG))
+
+                    // Bottom subtle gradient/scrim overlay for title legibility
+                    val scrimPaint = Paint().apply {
+                        color = android.graphics.Color.parseColor("#D9121118")
+                        style = Paint.Style.FILL
+                    }
+                    val scrimHeight = 28f
+                    canvas.drawRect(itemRect.left, itemRect.bottom - scrimHeight, itemRect.right, itemRect.bottom, scrimPaint)
+
+                    // Title on top of scrim
+                    val titleOnCoverPaint = Paint().apply {
+                        color = android.graphics.Color.WHITE
+                        textSize = 13f
+                        isFakeBoldText = true
+                        isAntiAlias = true
+                        textAlign = Paint.Align.CENTER
+                    }
+                    val truncated = if (item.title.length > 11) item.title.take(9) + "…" else item.title
+                    canvas.drawText(truncated, itemRect.centerX(), itemRect.bottom - 9f, titleOnCoverPaint)
+
+                    canvas.restore()
+                } else {
+                    // No cover image: Draw title in card center
+                    val itemTextPaint = Paint().apply {
+                        color = android.graphics.Color.WHITE
+                        textSize = 14f
+                        isFakeBoldText = true
+                        isAntiAlias = true
+                        textAlign = Paint.Align.CENTER
+                    }
+                    val words = item.title.split(" ")
+                    val line1 = if (words.isNotEmpty()) words[0] else ""
+                    val line2 = if (words.size > 1) words.drop(1).joinToString(" ").let { if (it.length > 10) it.take(8) + "…" else it } else ""
+
+                    if (line2.isNotEmpty()) {
+                        canvas.drawText(line1.take(10), itemRect.centerX(), itemRect.centerY() - 6f, itemTextPaint)
+                        canvas.drawText(line2, itemRect.centerX(), itemRect.centerY() + 14f, itemTextPaint)
+                    } else {
+                        canvas.drawText(line1.let { if (it.length > 10) it.take(8) + "…" else it }, itemRect.centerX(), itemRect.centerY() + 5f, itemTextPaint)
+                    }
+                }
+
+                // Card border
+                val itemBorderPaint = Paint().apply {
+                    color = android.graphics.Color.parseColor("#444254")
+                    style = Paint.Style.STROKE
+                    strokeWidth = 2f
+                    isAntiAlias = true
+                }
+                canvas.drawPath(itemPath, itemBorderPaint)
+
+                itemX += itemWidth + itemMargin
             }
 
-            currentY += rowHeight
+            currentY += actualRowHeight + 10f
         }
 
         // Footer Watermark
         val footerPaint = Paint().apply {
-            color = android.graphics.Color.parseColor("#6B6A78")
+            color = android.graphics.Color.parseColor("#747385")
             textSize = 20f
             isAntiAlias = true
             textAlign = Paint.Align.RIGHT
@@ -1546,7 +1737,7 @@ fun exportTierListToGallery(
         canvas.drawText("ReadTracker • Экспорт в Галерею", (width - 40).toFloat(), (totalHeight - 24).toFloat(), footerPaint)
 
         // Save to MediaStore
-        val filename = "TierList_${System.currentTimeMillis()}.png"
+        val filename = "TierList_${modeLabel.replace(" ", "_")}_${System.currentTimeMillis()}.png"
         val contentValues = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, filename)
             put(MediaStore.Images.Media.MIME_TYPE, "image/png")
@@ -1567,11 +1758,18 @@ fun exportTierListToGallery(
                 contentValues.put(MediaStore.Images.Media.IS_PENDING, 0)
                 resolver.update(uri, contentValues, null, null)
             }
-            Toast.makeText(context, "Тир-лист сохранён в галерею!", Toast.LENGTH_SHORT).show()
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, "Тир-лист с обложками сохранён в галерею!", Toast.LENGTH_LONG).show()
+            }
         } else {
-            Toast.makeText(context, "Не удалось сохранить изображение", Toast.LENGTH_SHORT).show()
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, "Не удалось сохранить изображение", Toast.LENGTH_SHORT).show()
+            }
         }
     } catch (e: Exception) {
-        Toast.makeText(context, "Ошибка сохранения: ${e.message}", Toast.LENGTH_SHORT).show()
+        e.printStackTrace()
+        withContext(Dispatchers.Main) {
+            Toast.makeText(context, "Ошибка экспорта: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
     }
 }

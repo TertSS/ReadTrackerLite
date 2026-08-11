@@ -20,5 +20,6 @@ data class TierListRow(
     val color: Long,
     val textColor: Long = 0xFFFFFFFFL,
     val orderIndex: Int,
-    val items: List<TierItem> = emptyList()
+    val items: List<TierItem> = emptyList(),
+    val mode: String = "BOOKS"
 )

@@ -53,6 +53,8 @@ fun LibraryScreen(
     val selectedFormat by viewModel.selectedFormatFilter.collectAsStateWithLifecycle()
     val books by viewModel.filteredBooks.collectAsStateWithLifecycle()
     val adaptations by viewModel.filteredAdaptations.collectAsStateWithLifecycle()
+    val allBooks by viewModel.allBooks.collectAsStateWithLifecycle()
+    val allAdaptations by viewModel.allAdaptations.collectAsStateWithLifecycle()
     val settings by viewModel.appSettings.collectAsStateWithLifecycle()
 
     var showFilterSheet by remember { mutableStateOf(false) }
@@ -233,43 +235,14 @@ fun LibraryScreen(
 
             // Horizontal Status Filter Tabs
             if (settings.showStatusFiltersInLibrary) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    val statusTabs = listOf(
-                        null to "Все",
-                        TitleStatus.READING to (if (currentMode == LibraryMode.BOOKS) "Читаю" else "Смотрю"),
-                        TitleStatus.PLANNED to "В планах",
-                        TitleStatus.COMPLETED to (if (currentMode == LibraryMode.BOOKS) "Завершено" else "Просмотрено"),
-                        TitleStatus.PAUSED to "Пауза",
-                        TitleStatus.DROPPED to "Брошено"
-                    )
-
-                    statusTabs.forEach { (status, label) ->
-                        val isSelected = selectedStatus == status
-                        Surface(
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .clickable { viewModel.selectedStatusFilter.value = status }
-                                .testTag("status_tab_${status?.id ?: "all"}"),
-                            color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceContainerLow,
-                            shape = CircleShape,
-                            border = if (isSelected) BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)) else null
-                        ) {
-                            Text(
-                                text = label,
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                            )
-                        }
-                    }
-                }
+                LibraryStatusFilterBar(
+                    selectedStatus = selectedStatus,
+                    currentMode = currentMode,
+                    style = settings.libraryStatusBarStyle,
+                    allBooks = allBooks,
+                    allAdaptations = allAdaptations,
+                    onSelectStatus = { viewModel.selectedStatusFilter.value = it }
+                )
             }
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -298,6 +271,8 @@ fun LibraryScreen(
                                     ratingEnabled = settings.ratingEnabled,
                                     showCovers = settings.showCoversInLibrary,
                                     coverlessStyle = settings.coverlessCardStyle,
+                                    compactTagPosition = settings.compactTagPosition,
+                                    bookmarksEnabled = settings.bookmarksEnabled,
                                     shortenNumbers = settings.shortenNumbers,
                                     alignFormatWithTitle = settings.alignFormatWithTitle,
                                     onClick = { viewModel.openBookDetails(book.id) },
@@ -320,6 +295,8 @@ fun LibraryScreen(
                                             ratingEnabled = settings.ratingEnabled,
                                             showCovers = settings.showCoversInLibrary,
                                             coverlessStyle = settings.coverlessCardStyle,
+                                            compactTagPosition = settings.compactTagPosition,
+                                            bookmarksEnabled = settings.bookmarksEnabled,
                                             shortenNumbers = settings.shortenNumbers,
                                             alignFormatWithTitle = settings.alignFormatWithTitle,
                                             onClick = { viewModel.openBookDetails(book.id) },
@@ -355,6 +332,8 @@ fun LibraryScreen(
                                     ratingEnabled = settings.ratingEnabled,
                                     showCovers = settings.showCoversInLibrary,
                                     coverlessStyle = settings.coverlessCardStyle,
+                                    compactTagPosition = settings.compactTagPosition,
+                                    bookmarksEnabled = settings.bookmarksEnabled,
                                     alignFormatWithTitle = settings.alignFormatWithTitle,
                                     onClick = { viewModel.openAdaptationDetails(adaptation.id) },
                                     onLongClick = { adaptationToDelete = adaptation }
@@ -376,6 +355,8 @@ fun LibraryScreen(
                                             ratingEnabled = settings.ratingEnabled,
                                             showCovers = settings.showCoversInLibrary,
                                             coverlessStyle = settings.coverlessCardStyle,
+                                            compactTagPosition = settings.compactTagPosition,
+                                            bookmarksEnabled = settings.bookmarksEnabled,
                                             alignFormatWithTitle = settings.alignFormatWithTitle,
                                             onClick = { viewModel.openAdaptationDetails(adaptation.id) },
                                             onLongClick = { adaptationToDelete = adaptation }
@@ -539,6 +520,196 @@ fun LibraryScreen(
     }
 }
 
+@Composable
+fun LibraryStatusFilterBar(
+    selectedStatus: TitleStatus?,
+    currentMode: LibraryMode,
+    style: String, // "PILLS", "SEGMENTED", "CARDS_COUNT"
+    allBooks: List<BookTitle>,
+    allAdaptations: List<Adaptation>,
+    onSelectStatus: (TitleStatus?) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val statusTabs = listOf(
+        null to "Все",
+        TitleStatus.READING to (if (currentMode == LibraryMode.BOOKS) "Читаю" else "Смотрю"),
+        TitleStatus.PLANNED to "В планах",
+        TitleStatus.COMPLETED to (if (currentMode == LibraryMode.BOOKS) "Завершено" else "Просмотрено"),
+        TitleStatus.PAUSED to "Пауза",
+        TitleStatus.DROPPED to "Брошено"
+    )
+
+    when (style) {
+        "SEGMENTED" -> {
+            val statusIcons = listOf(
+                null to ("Все" to Icons.Default.Layers),
+                TitleStatus.READING to ((if (currentMode == LibraryMode.BOOKS) "Читаю" else "Смотрю") to Icons.Default.AutoStories),
+                TitleStatus.PLANNED to ("В планах" to Icons.Default.BookmarkBorder),
+                TitleStatus.COMPLETED to ((if (currentMode == LibraryMode.BOOKS) "Завершено" else "Просмотрено") to Icons.Default.CheckCircleOutline),
+                TitleStatus.PAUSED to ("Пауза" to Icons.Default.PauseCircleOutline),
+                TitleStatus.DROPPED to ("Брошено" to Icons.Default.HighlightOff)
+            )
+            Surface(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                shape = RoundedCornerShape(14.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    statusIcons.forEach { (status, pair) ->
+                        val (label, icon) = pair
+                        val isSelected = selectedStatus == status
+                        Surface(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { onSelectStatus(status) }
+                                .testTag("status_tab_${status?.id ?: "all"}"),
+                            color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                            shape = RoundedCornerShape(10.dp),
+                            shadowElevation = if (isSelected) 1.dp else 0.dp
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(15.dp),
+                                    tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = label,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        "CARDS_COUNT" -> {
+            val statusColors = listOf(
+                null to ("Все" to MaterialTheme.colorScheme.primary),
+                TitleStatus.READING to ((if (currentMode == LibraryMode.BOOKS) "Читаю" else "Смотрю") to StatusReadingColor),
+                TitleStatus.PLANNED to ("В планах" to StatusPlannedColor),
+                TitleStatus.COMPLETED to ((if (currentMode == LibraryMode.BOOKS) "Завершено" else "Просмотрено") to StatusCompletedColor),
+                TitleStatus.PAUSED to ("Пауза" to StatusPausedColor),
+                TitleStatus.DROPPED to ("Брошено" to StatusDroppedColor)
+            )
+            Row(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                statusColors.forEach { (status, pair) ->
+                    val (label, color) = pair
+                    val isSelected = selectedStatus == status
+                    val count = if (status == null) {
+                        if (currentMode == LibraryMode.BOOKS) allBooks.size else allAdaptations.size
+                    } else {
+                        if (currentMode == LibraryMode.BOOKS) allBooks.count { it.status == status } else allAdaptations.count { it.status == status }
+                    }
+                    Surface(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { onSelectStatus(status) }
+                            .testTag("status_tab_${status?.id ?: "all"}"),
+                        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.75f) else MaterialTheme.colorScheme.surfaceContainerLow,
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(
+                            if (isSelected) 1.5.dp else 0.8.dp,
+                            if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(color)
+                            )
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                            )
+                            Surface(
+                                shape = CircleShape,
+                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
+                                modifier = Modifier.padding(start = 2.dp)
+                            ) {
+                                Text(
+                                    text = "$count",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        else -> {
+            // "PILLS"
+            Row(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                statusTabs.forEach { (status, label) ->
+                    val isSelected = selectedStatus == status
+                    Surface(
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .clickable { onSelectStatus(status) }
+                            .testTag("status_tab_${status?.id ?: "all"}"),
+                        color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.16f) else MaterialTheme.colorScheme.surfaceContainerLow,
+                        shape = CircleShape,
+                        border = BorderStroke(
+                            1.dp,
+                            if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.6f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
+                        )
+                    ) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun BookGridCard(
@@ -547,6 +718,8 @@ fun BookGridCard(
     ratingEnabled: Boolean,
     showCovers: Boolean = true,
     coverlessStyle: String = "CLASSIC",
+    compactTagPosition: String = "UNDER_STATUS",
+    bookmarksEnabled: Boolean = true,
     shortenNumbers: Boolean = false,
     alignFormatWithTitle: Boolean = false,
     onClick: () -> Unit,
@@ -648,12 +821,21 @@ fun BookGridCard(
 
                     Spacer(modifier = Modifier.height(6.dp))
 
-                    Text(
-                        text = "${Formatters.formatNumber(book.effectiveWords, shorten = shortenNumbers)} сл.",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "${Formatters.formatNumber(book.effectiveWords, shorten = shortenNumbers)} сл.",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        if (bookmarksEnabled && book.bookmark.isNotBlank()) {
+                            BookmarkChip(bookmark = book.bookmark, modifier = Modifier.weight(1f, fill = false))
+                        }
+                    }
 
                     Spacer(modifier = Modifier.height(4.dp))
 
@@ -740,12 +922,21 @@ fun BookGridCard(
 
                             Spacer(modifier = Modifier.height(6.dp))
 
-                            Text(
-                                text = "${Formatters.formatNumber(book.effectiveWords, shorten = shortenNumbers)} сл.",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = "${Formatters.formatNumber(book.effectiveWords, shorten = shortenNumbers)} сл.",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                if (bookmarksEnabled && book.bookmark.isNotBlank()) {
+                                    BookmarkChip(bookmark = book.bookmark, modifier = Modifier.weight(1f, fill = false))
+                                }
+                            }
 
                             Spacer(modifier = Modifier.height(4.dp))
 
@@ -849,12 +1040,20 @@ fun BookGridCard(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             FormatBadge(format = book.format.shortLabel, alignFlush = alignFormatWithTitle)
-                            Text(
-                                text = "${Formatters.formatNumber(book.effectiveWords, shorten = shortenNumbers)} сл.",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = "${Formatters.formatNumber(book.effectiveWords, shorten = shortenNumbers)} сл.",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                if (bookmarksEnabled && book.bookmark.isNotBlank()) {
+                                    BookmarkChip(bookmark = book.bookmark)
+                                }
+                            }
                         }
 
                         Spacer(modifier = Modifier.height(6.dp))
@@ -903,13 +1102,24 @@ fun BookGridCard(
                             .padding(8.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            FormatBadge(format = book.format.shortLabel, alignFlush = alignFormatWithTitle)
-                            StatusBadge(status = book.status)
+                        if (compactTagPosition == "LEFT_OF_STATUS") {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                FormatBadge(format = book.format.shortLabel, alignFlush = alignFormatWithTitle)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                StatusBadge(status = book.status)
+                            }
+                        } else {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                StatusBadge(status = book.status)
+                            }
                         }
 
                         Text(
@@ -926,28 +1136,44 @@ fun BookGridCard(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "${Formatters.formatNumber(book.effectiveWords, shorten = shortenNumbers)} сл.",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                modifier = Modifier.weight(1f, fill = false)
+                            ) {
+                                Text(
+                                    text = "${Formatters.formatNumber(book.effectiveWords, shorten = shortenNumbers)} сл.",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                if (bookmarksEnabled && book.bookmark.isNotBlank()) {
+                                    BookmarkChip(bookmark = book.bookmark)
+                                }
+                            }
 
-                            Text(
-                                text = book.progressDisplay,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-
-                        if (ratingEnabled && book.rating > 0f) {
-                            Text(
-                                text = "★ ${Formatters.formatRating(book.rating, ratingScale)}",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = StarGold
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                if (compactTagPosition == "UNDER_STATUS") {
+                                    FormatBadge(format = book.format.shortLabel, alignFlush = alignFormatWithTitle)
+                                }
+                                if (ratingEnabled && book.rating > 0f) {
+                                    Text(
+                                        text = "★ ${Formatters.formatRating(book.rating, ratingScale)}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = StarGold
+                                    )
+                                }
+                                Text(
+                                    text = book.progressDisplay,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
                         }
 
                         LinearProgressIndicator(
@@ -1008,12 +1234,21 @@ fun BookGridCard(
 
                             Spacer(modifier = Modifier.height(6.dp))
 
-                            Text(
-                                text = "${Formatters.formatNumber(book.effectiveWords, shorten = shortenNumbers)} сл.",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = "${Formatters.formatNumber(book.effectiveWords, shorten = shortenNumbers)} сл.",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                if (bookmarksEnabled && book.bookmark.isNotBlank()) {
+                                    BookmarkChip(bookmark = book.bookmark, modifier = Modifier.weight(1f, fill = false))
+                                }
+                            }
 
                             Spacer(modifier = Modifier.height(4.dp))
 
@@ -1065,6 +1300,8 @@ fun BookListCard(
     ratingEnabled: Boolean,
     showCovers: Boolean = true,
     coverlessStyle: String = "CLASSIC",
+    compactTagPosition: String = "UNDER_STATUS",
+    bookmarksEnabled: Boolean = true,
     shortenNumbers: Boolean = false,
     alignFormatWithTitle: Boolean = false,
     onClick: () -> Unit,
@@ -1136,14 +1373,22 @@ fun BookListCard(
                         )
                     }
 
-                    if (book.bookmark.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
                         Text(
-                            text = "🔖 ${book.bookmark}",
+                            text = "${Formatters.formatNumber(book.effectiveWords, shorten = shortenNumbers)} сл.",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.tertiary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        if (bookmarksEnabled && book.bookmark.isNotBlank()) {
+                            BookmarkChip(bookmark = book.bookmark, modifier = Modifier.weight(1f, fill = false))
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(4.dp))
@@ -1168,24 +1413,12 @@ fun BookListCard(
                             }
                         }
 
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Text(
-                                text = "${Formatters.formatNumber(book.effectiveWords, shorten = shortenNumbers)} сл.",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-
-                            Text(
-                                text = book.progressDisplay,
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
+                        Text(
+                            text = book.progressDisplay,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
             }
@@ -1201,22 +1434,27 @@ fun BookListCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    Text(
+                        text = book.title,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f, fill = false)
-                    ) {
-                        FormatBadge(format = book.format.shortLabel, alignFlush = alignFormatWithTitle)
-                        Text(
-                            text = book.title,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    if (compactTagPosition == "LEFT_OF_STATUS") {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            FormatBadge(format = book.format.shortLabel, alignFlush = alignFormatWithTitle)
+                            StatusBadge(status = book.status)
+                        }
+                    } else {
+                        StatusBadge(status = book.status)
                     }
-                    StatusBadge(status = book.status)
                 }
 
                 Row(
@@ -1224,17 +1462,29 @@ fun BookListCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = if (book.author.isNotEmpty()) book.author else "${Formatters.formatNumber(book.effectiveWords, shorten = shortenNumbers)} сл.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.weight(1f, fill = false)
+                    ) {
+                        Text(
+                            text = "${Formatters.formatNumber(book.effectiveWords, shorten = shortenNumbers)} сл.",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        if (bookmarksEnabled && book.bookmark.isNotBlank()) {
+                            BookmarkChip(bookmark = book.bookmark)
+                        }
+                    }
 
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
+                        if (compactTagPosition == "UNDER_STATUS") {
+                            FormatBadge(format = book.format.shortLabel, alignFlush = alignFormatWithTitle)
+                        }
                         if (ratingEnabled && book.rating > 0f) {
                             Text(
                                 text = "★ ${Formatters.formatRating(book.rating, ratingScale)}",
@@ -1243,7 +1493,6 @@ fun BookListCard(
                                 color = StarGold
                             )
                         }
-
                         Text(
                             text = book.progressDisplay,
                             style = MaterialTheme.typography.labelMedium,
@@ -1304,14 +1553,22 @@ fun BookListCard(
                         )
                     }
 
-                    if (book.bookmark.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
                         Text(
-                            text = "🔖 ${book.bookmark}",
+                            text = "${Formatters.formatNumber(book.effectiveWords, shorten = shortenNumbers)} сл.",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.tertiary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        if (bookmarksEnabled && book.bookmark.isNotBlank()) {
+                            BookmarkChip(bookmark = book.bookmark, modifier = Modifier.weight(1f, fill = false))
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(4.dp))
@@ -1336,24 +1593,12 @@ fun BookListCard(
                             }
                         }
 
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Text(
-                                text = "${Formatters.formatNumber(book.effectiveWords, shorten = shortenNumbers)} сл.",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-
-                            Text(
-                                text = book.progressDisplay,
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
+                        Text(
+                            text = book.progressDisplay,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
             }
@@ -1369,6 +1614,8 @@ fun AdaptationGridCard(
     ratingEnabled: Boolean,
     showCovers: Boolean = true,
     coverlessStyle: String = "CLASSIC",
+    compactTagPosition: String = "UNDER_STATUS",
+    bookmarksEnabled: Boolean = true,
     alignFormatWithTitle: Boolean = false,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null
@@ -1470,6 +1717,11 @@ fun AdaptationGridCard(
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
+                if (bookmarksEnabled && adaptation.bookmark.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    BookmarkChip(bookmark = adaptation.bookmark)
+                }
+
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Row(
@@ -1508,6 +1760,8 @@ fun AdaptationListCard(
     ratingEnabled: Boolean,
     showCovers: Boolean = true,
     coverlessStyle: String = "CLASSIC",
+    compactTagPosition: String = "UNDER_STATUS",
+    bookmarksEnabled: Boolean = true,
     alignFormatWithTitle: Boolean = false,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null
@@ -1566,13 +1820,9 @@ fun AdaptationListCard(
                     StatusBadge(status = adaptation.status, isAdaptation = true)
                 }
 
-                if (adaptation.bookmark.isNotEmpty()) {
-                    Text(
-                        text = "🔖 ${adaptation.bookmark}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.tertiary,
-                        maxLines = 1
-                    )
+                if (bookmarksEnabled && adaptation.bookmark.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    BookmarkChip(bookmark = adaptation.bookmark)
                 }
 
                 Spacer(modifier = Modifier.height(4.dp))

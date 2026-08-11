@@ -121,21 +121,54 @@ class ReadTrackerRepository(
         tierListDao.insertRows(rows)
     }
 
-    suspend fun applyTierPreset(preset: TierPreset) = withContext(Dispatchers.IO) {
+    suspend fun setTierRowsForMode(rows: List<TierListRow>, mode: String) = withContext(Dispatchers.IO) {
+        tierListDao.deleteRowsByMode(mode)
+        tierListDao.insertRows(rows)
+    }
+
+    suspend fun getRowCountByMode(mode: String): Int = withContext(Dispatchers.IO) {
+        tierListDao.getRowCountByMode(mode)
+    }
+
+    suspend fun ensureTierRowsForMode(mode: String) = withContext(Dispatchers.IO) {
+        val count = tierListDao.getRowCountByMode(mode)
+        if (count == 0) {
+            val initialRows = if (mode == "BOOKS") {
+                listOf(
+                    TierListRow(id = "tr_book_s", name = "S", color = 0xFFFF5252L, textColor = 0xFFFFFFFFL, orderIndex = 0, items = emptyList(), mode = "BOOKS"),
+                    TierListRow(id = "tr_book_a", name = "A", color = 0xFFFFB142L, textColor = 0xFF131313L, orderIndex = 1, items = emptyList(), mode = "BOOKS"),
+                    TierListRow(id = "tr_book_b", name = "B", color = 0xFFFFDA79L, textColor = 0xFF131313L, orderIndex = 2, items = emptyList(), mode = "BOOKS"),
+                    TierListRow(id = "tr_book_c", name = "C", color = 0xFF33D9B2L, textColor = 0xFF131313L, orderIndex = 3, items = emptyList(), mode = "BOOKS"),
+                    TierListRow(id = "tr_book_d", name = "D", color = 0xFF34ACE0L, textColor = 0xFFFFFFFFL, orderIndex = 4, items = emptyList(), mode = "BOOKS")
+                )
+            } else {
+                listOf(
+                    TierListRow(id = "tr_adap_s", name = "S", color = 0xFFFF5252L, textColor = 0xFFFFFFFFL, orderIndex = 0, items = emptyList(), mode = "ADAPTATIONS"),
+                    TierListRow(id = "tr_adap_a", name = "A", color = 0xFFFFB142L, textColor = 0xFF131313L, orderIndex = 1, items = emptyList(), mode = "ADAPTATIONS"),
+                    TierListRow(id = "tr_adap_b", name = "B", color = 0xFFFFDA79L, textColor = 0xFF131313L, orderIndex = 2, items = emptyList(), mode = "ADAPTATIONS"),
+                    TierListRow(id = "tr_adap_c", name = "C", color = 0xFF33D9B2L, textColor = 0xFF131313L, orderIndex = 3, items = emptyList(), mode = "ADAPTATIONS"),
+                    TierListRow(id = "tr_adap_d", name = "D", color = 0xFF34ACE0L, textColor = 0xFFFFFFFFL, orderIndex = 4, items = emptyList(), mode = "ADAPTATIONS")
+                )
+            }
+            tierListDao.insertRows(initialRows)
+        }
+    }
+
+    suspend fun applyTierPreset(preset: TierPreset, mode: String = "BOOKS") = withContext(Dispatchers.IO) {
         val newRows = when (preset) {
             TierPreset.CLASSIC -> listOf(
-                TierListRow(id = UUID.randomUUID().toString(), name = "Peak", color = 0xFFFF5252L, textColor = 0xFFFFFFFFL, orderIndex = 0),
-                TierListRow(id = UUID.randomUUID().toString(), name = "Mid", color = 0xFFFFB142L, textColor = 0xFF131313L, orderIndex = 1),
-                TierListRow(id = UUID.randomUUID().toString(), name = "Weak", color = 0xFFFFDA79L, textColor = 0xFF131313L, orderIndex = 2),
-                TierListRow(id = UUID.randomUUID().toString(), name = "Trash", color = 0xFF33D9B2L, textColor = 0xFF131313L, orderIndex = 3)
+                TierListRow(id = UUID.randomUUID().toString(), name = "Peak", color = 0xFFFF5252L, textColor = 0xFFFFFFFFL, orderIndex = 0, mode = mode),
+                TierListRow(id = UUID.randomUUID().toString(), name = "Mid", color = 0xFFFFB142L, textColor = 0xFF131313L, orderIndex = 1, mode = mode),
+                TierListRow(id = UUID.randomUUID().toString(), name = "Weak", color = 0xFFFFDA79L, textColor = 0xFF131313L, orderIndex = 2, mode = mode),
+                TierListRow(id = UUID.randomUUID().toString(), name = "Trash", color = 0xFF33D9B2L, textColor = 0xFF131313L, orderIndex = 3, mode = mode)
             )
             TierPreset.LETTERS -> listOf(
-                TierListRow(id = UUID.randomUUID().toString(), name = "S", color = 0xFFFF5252L, textColor = 0xFFFFFFFFL, orderIndex = 0),
-                TierListRow(id = UUID.randomUUID().toString(), name = "A", color = 0xFFFFB142L, textColor = 0xFF131313L, orderIndex = 1),
-                TierListRow(id = UUID.randomUUID().toString(), name = "B", color = 0xFFFFDA79L, textColor = 0xFF131313L, orderIndex = 2),
-                TierListRow(id = UUID.randomUUID().toString(), name = "C", color = 0xFF33D9B2L, textColor = 0xFF131313L, orderIndex = 3),
-                TierListRow(id = UUID.randomUUID().toString(), name = "D", color = 0xFF34ACE0L, textColor = 0xFFFFFFFFL, orderIndex = 4),
-                TierListRow(id = UUID.randomUUID().toString(), name = "F", color = 0xFF706FD3L, textColor = 0xFFFFFFFFL, orderIndex = 5)
+                TierListRow(id = UUID.randomUUID().toString(), name = "S", color = 0xFFFF5252L, textColor = 0xFFFFFFFFL, orderIndex = 0, mode = mode),
+                TierListRow(id = UUID.randomUUID().toString(), name = "A", color = 0xFFFFB142L, textColor = 0xFF131313L, orderIndex = 1, mode = mode),
+                TierListRow(id = UUID.randomUUID().toString(), name = "B", color = 0xFFFFDA79L, textColor = 0xFF131313L, orderIndex = 2, mode = mode),
+                TierListRow(id = UUID.randomUUID().toString(), name = "C", color = 0xFF33D9B2L, textColor = 0xFF131313L, orderIndex = 3, mode = mode),
+                TierListRow(id = UUID.randomUUID().toString(), name = "D", color = 0xFF34ACE0L, textColor = 0xFFFFFFFFL, orderIndex = 4, mode = mode),
+                TierListRow(id = UUID.randomUUID().toString(), name = "F", color = 0xFF706FD3L, textColor = 0xFFFFFFFFL, orderIndex = 5, mode = mode)
             )
             TierPreset.NUMBERS -> (10 downTo 1).mapIndexed { index, num ->
                 TierListRow(
@@ -149,11 +182,12 @@ class ReadTrackerRepository(
                         else -> 0xFF34ACE0L
                     },
                     textColor = if (num in 5..8) 0xFF131313L else 0xFFFFFFFFL,
-                    orderIndex = index
+                    orderIndex = index,
+                    mode = mode
                 )
             }
         }
-        tierListDao.deleteAllRows()
+        tierListDao.deleteRowsByMode(mode)
         tierListDao.insertRows(newRows)
     }
 
@@ -223,50 +257,108 @@ class ReadTrackerRepository(
                 settingsDao.insertOrUpdateSettings(AppSettings())
             }
 
-            if (tierListDao.getRowCount() == 0) {
-                val initialRows = listOf(
+            val booksRowCount = tierListDao.getRowCountByMode("BOOKS")
+            if (booksRowCount == 0) {
+                val initialBookRows = listOf(
                     TierListRow(
-                        id = "tr_s",
+                        id = "tr_book_s",
                         name = "S",
                         color = 0xFFFF5252L,
                         textColor = 0xFFFFFFFFL,
                         orderIndex = 0,
-                        items = emptyList()
+                        items = emptyList(),
+                        mode = "BOOKS"
                     ),
                     TierListRow(
-                        id = "tr_a",
+                        id = "tr_book_a",
                         name = "A",
                         color = 0xFFFFB142L,
                         textColor = 0xFF131313L,
                         orderIndex = 1,
-                        items = emptyList()
+                        items = emptyList(),
+                        mode = "BOOKS"
                     ),
                     TierListRow(
-                        id = "tr_b",
+                        id = "tr_book_b",
                         name = "B",
                         color = 0xFFFFDA79L,
                         textColor = 0xFF131313L,
                         orderIndex = 2,
-                        items = emptyList()
+                        items = emptyList(),
+                        mode = "BOOKS"
                     ),
                     TierListRow(
-                        id = "tr_c",
+                        id = "tr_book_c",
                         name = "C",
                         color = 0xFF33D9B2L,
                         textColor = 0xFF131313L,
                         orderIndex = 3,
-                        items = emptyList()
+                        items = emptyList(),
+                        mode = "BOOKS"
                     ),
                     TierListRow(
-                        id = "tr_d",
+                        id = "tr_book_d",
                         name = "D",
                         color = 0xFF34ACE0L,
                         textColor = 0xFFFFFFFFL,
                         orderIndex = 4,
-                        items = emptyList()
+                        items = emptyList(),
+                        mode = "BOOKS"
                     )
                 )
-                tierListDao.insertRows(initialRows)
+                tierListDao.insertRows(initialBookRows)
+            }
+
+            val adapRowCount = tierListDao.getRowCountByMode("ADAPTATIONS")
+            if (adapRowCount == 0) {
+                val initialAdapRows = listOf(
+                    TierListRow(
+                        id = "tr_adap_s",
+                        name = "S",
+                        color = 0xFFFF5252L,
+                        textColor = 0xFFFFFFFFL,
+                        orderIndex = 0,
+                        items = emptyList(),
+                        mode = "ADAPTATIONS"
+                    ),
+                    TierListRow(
+                        id = "tr_adap_a",
+                        name = "A",
+                        color = 0xFFFFB142L,
+                        textColor = 0xFF131313L,
+                        orderIndex = 1,
+                        items = emptyList(),
+                        mode = "ADAPTATIONS"
+                    ),
+                    TierListRow(
+                        id = "tr_adap_b",
+                        name = "B",
+                        color = 0xFFFFDA79L,
+                        textColor = 0xFF131313L,
+                        orderIndex = 2,
+                        items = emptyList(),
+                        mode = "ADAPTATIONS"
+                    ),
+                    TierListRow(
+                        id = "tr_adap_c",
+                        name = "C",
+                        color = 0xFF33D9B2L,
+                        textColor = 0xFF131313L,
+                        orderIndex = 3,
+                        items = emptyList(),
+                        mode = "ADAPTATIONS"
+                    ),
+                    TierListRow(
+                        id = "tr_adap_d",
+                        name = "D",
+                        color = 0xFF34ACE0L,
+                        textColor = 0xFFFFFFFFL,
+                        orderIndex = 4,
+                        items = emptyList(),
+                        mode = "ADAPTATIONS"
+                    )
+                )
+                tierListDao.insertRows(initialAdapRows)
             }
         } catch (e: Exception) {
             e.printStackTrace()

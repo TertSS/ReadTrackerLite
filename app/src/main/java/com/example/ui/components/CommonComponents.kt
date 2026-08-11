@@ -319,6 +319,42 @@ fun StatusBadge(
 }
 
 @Composable
+fun BookmarkChip(
+    bookmark: String,
+    modifier: Modifier = Modifier
+) {
+    if (bookmark.isBlank()) return
+    Surface(
+        modifier = modifier.clip(RoundedCornerShape(6.dp)),
+        shape = RoundedCornerShape(6.dp),
+        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.4f),
+        border = BorderStroke(0.6.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.35f))
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp),
+            horizontalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Bookmark,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.tertiary,
+                modifier = Modifier.size(11.dp)
+            )
+            Text(
+                text = bookmark,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                fontSize = 10.5.sp
+            )
+        }
+    }
+}
+
+@Composable
 fun FormatBadge(
     format: String,
     modifier: Modifier = Modifier,
