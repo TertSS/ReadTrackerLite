@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -22,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -79,6 +82,7 @@ fun ModernAddEditTitleScreen(
     var pendingFormatSwitch by remember { mutableStateOf<TitleFormat?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var newGenreInput by remember { mutableStateOf("") }
+    val customAddedGenres = remember { mutableStateListOf<String>() }
 
     val handleSave = {
         if (title.trim().isEmpty()) {
@@ -1007,6 +1011,19 @@ fun ModernAddEditTitleScreen(
                             )
 
                             // Add new tag input
+                            val addGenreAction = {
+                                val trimmed = newGenreInput.trim()
+                                if (trimmed.isNotEmpty()) {
+                                    if (!genres.any { it.equals(trimmed, ignoreCase = true) }) {
+                                        genres = genres + trimmed
+                                    }
+                                    if (!customAddedGenres.any { it.equals(trimmed, ignoreCase = true) }) {
+                                        customAddedGenres.add(trimmed)
+                                    }
+                                    newGenreInput = ""
+                                }
+                            }
+
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1017,40 +1034,44 @@ fun ModernAddEditTitleScreen(
                                     onValueChange = { newGenreInput = it },
                                     placeholder = { Text("Новый жанр...") },
                                     modifier = Modifier.weight(1f),
-                                    singleLine = true
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                                    keyboardActions = KeyboardActions(onDone = { addGenreAction() })
                                 )
                                 Button(
-                                    onClick = {
-                                        val trimmed = newGenreInput.trim()
-                                        if (trimmed.isNotEmpty() && !genres.contains(trimmed)) {
-                                            genres = genres + trimmed
-                                            newGenreInput = ""
-                                        }
-                                    }
+                                    onClick = { addGenreAction() }
                                 ) {
                                     Text("Добавить")
                                 }
                             }
 
-                            // Popular / Known genres chips
-                            val availableGenres = (knownGenres + listOf("Фэнтези", "Исекай", "Боевик", "Романтика", "Детектив", "Комедия", "Драма", "Приключения")).distinct()
-                            FlowRow(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                availableGenres.forEach { g ->
-                                    val isSelected = genres.contains(g)
-                                    FilterChip(
-                                        selected = isSelected,
-                                        onClick = {
-                                            genres = if (isSelected) genres - g else genres + g
-                                        },
-                                        label = { Text(g) },
-                                        leadingIcon = if (isSelected) {
-                                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
-                                        } else null
-                                    )
+                            // Known / Custom genres chips (added by user)
+                            val availableGenres = (genres + customAddedGenres + knownGenres).distinct()
+                            if (availableGenres.isEmpty()) {
+                                Text(
+                                    text = "Пока нет добавленных жанров. Введите название и нажмите «Добавить».",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            } else {
+                                FlowRow(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    availableGenres.forEach { g ->
+                                        val isSelected = genres.contains(g)
+                                        FilterChip(
+                                            selected = isSelected,
+                                            onClick = {
+                                                genres = if (isSelected) genres - g else genres + g
+                                            },
+                                            label = { Text(g) },
+                                            leadingIcon = if (isSelected) {
+                                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
+                                            } else null
+                                        )
+                                    }
                                 }
                             }
                         }

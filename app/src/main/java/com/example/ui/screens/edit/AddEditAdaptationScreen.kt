@@ -6,6 +6,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -16,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -73,6 +76,7 @@ fun ClassicAddEditAdaptationScreen(
     var showInReviews by remember { mutableStateOf(existingAdaptation?.showInReviews ?: true) }
     var genres by remember { mutableStateOf(existingAdaptation?.genres ?: emptyList()) }
     var newGenreInput by remember { mutableStateOf("") }
+    val customAddedGenres = remember { mutableStateListOf<String>() }
 
     // Series Seasons state
     var expandedSeasons by remember { mutableStateOf(setOf<Int>()) }
@@ -775,6 +779,20 @@ fun ClassicAddEditAdaptationScreen(
                                 }
                             }
 
+                            // Add new genre input
+                            val addGenreAction = {
+                                val trimmed = newGenreInput.trim()
+                                if (trimmed.isNotEmpty()) {
+                                    if (genres.none { it.equals(trimmed, ignoreCase = true) }) {
+                                        genres = genres + trimmed
+                                    }
+                                    if (customAddedGenres.none { it.equals(trimmed, ignoreCase = true) }) {
+                                        customAddedGenres.add(trimmed)
+                                    }
+                                    newGenreInput = ""
+                                }
+                            }
+
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -785,18 +803,39 @@ fun ClassicAddEditAdaptationScreen(
                                     onValueChange = { newGenreInput = it },
                                     placeholder = { Text("Добавить жанр (Enter)...") },
                                     modifier = Modifier.weight(1f),
-                                    singleLine = true
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                                    keyboardActions = KeyboardActions(onDone = { addGenreAction() })
                                 )
                                 Button(
-                                    onClick = {
-                                        val trimmed = newGenreInput.trim()
-                                        if (trimmed.isNotEmpty() && genres.none { it.equals(trimmed, ignoreCase = true) }) {
-                                            genres = genres + trimmed
-                                            newGenreInput = ""
-                                        }
-                                    }
+                                    onClick = { addGenreAction() }
                                 ) {
                                     Text("OK")
+                                }
+                            }
+
+                            // Quick add suggestions from known user genres
+                            val suggestions = (customAddedGenres + knownGenres)
+                                .distinct()
+                                .filter { kg -> genres.none { it.equals(kg, ignoreCase = true) } }
+                            if (genres.isEmpty() && suggestions.isEmpty()) {
+                                Text(
+                                    text = "Пока нет добавленных жанров. Введите название и нажмите «OK».",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            } else if (suggestions.isNotEmpty()) {
+                                Text("Ранее добавленные:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    suggestions.take(12).forEach { sg ->
+                                        SuggestionChip(
+                                            onClick = { genres = genres + sg },
+                                            label = { Text(sg, fontSize = 11.sp) }
+                                        )
+                                    }
                                 }
                             }
                         }
