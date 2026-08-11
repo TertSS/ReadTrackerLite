@@ -722,6 +722,7 @@ fun AddEditAdaptationScreen(
                                 rating = rating,
                                 scale = settings.ratingScale,
                                 editable = true,
+                                allowFractional = settings.fractionalRatingEnabled,
                                 onRatingChanged = { rating = it }
                             )
                         }

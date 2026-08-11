@@ -341,6 +341,7 @@ fun AdaptationDetailScreen(
                                 rating = adaptation.rating,
                                 scale = settings.ratingScale,
                                 editable = true,
+                                allowFractional = settings.fractionalRatingEnabled,
                                 onRatingChanged = { newRating ->
                                     viewModel.saveAdaptation(adaptation.copy(rating = newRating))
                                 }

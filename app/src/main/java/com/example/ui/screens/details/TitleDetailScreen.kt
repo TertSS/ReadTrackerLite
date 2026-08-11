@@ -426,6 +426,7 @@ fun TitleDetailScreen(
                                 rating = book.rating,
                                 scale = settings.ratingScale,
                                 editable = true,
+                                allowFractional = settings.fractionalRatingEnabled,
                                 onRatingChanged = { newRating ->
                                     viewModel.saveBook(book.copy(rating = newRating))
                                 }

@@ -12,15 +12,14 @@ import android.provider.MediaStore
 import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -46,7 +45,7 @@ import com.example.ui.components.*
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.ReadTrackerViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun TierListScreen(
     viewModel: ReadTrackerViewModel,
@@ -57,11 +56,15 @@ fun TierListScreen(
     val currentMode by viewModel.libraryMode.collectAsStateWithLifecycle()
     val allBooks by viewModel.allBooks.collectAsStateWithLifecycle()
     val allAdaptations by viewModel.allAdaptations.collectAsStateWithLifecycle()
+    val settings by viewModel.appSettings.collectAsStateWithLifecycle()
 
     var showPresetMenu by remember { mutableStateOf(false) }
     var showAddRowDialog by remember { mutableStateOf(false) }
     var showAddCustomItemDialog by remember { mutableStateOf(false) }
-    var selectedItemForAction by remember { mutableStateOf<Pair<TierItem, String?>?>(null) } // item, fromRowId
+    var editingRow by remember { mutableStateOf<TierListRow?>(null) }
+    var selectedItemForSheet by remember { mutableStateOf<Pair<TierItem, String?>?>(null) } // item, fromRowId
+    var itemForCoverEdit by remember { mutableStateOf<TierItem?>(null) }
+    var draggingItem by remember { mutableStateOf<Pair<TierItem, String?>?>(null) } // drag & drop active item
 
     val unassignedItems = remember(tierRows, allBooks, allAdaptations, currentMode) {
         viewModel.getUnassignedTierItems(tierRows, allBooks, allAdaptations, currentMode)
@@ -85,8 +88,8 @@ fun TierListScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Тир-лист",
-                        style = MaterialTheme.typography.headlineMedium,
+                        text = if (settings.uniformHeadersEnabled) "Тир-лист" else "Тир-лист",
+                        style = if (settings.uniformHeadersEnabled) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -142,12 +145,57 @@ fun TierListScreen(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+            // Drag active indicator banner
+            if (draggingItem != null) {
+                item {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.TouchApp, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Перемещение: «${draggingItem!!.first.title}»",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            IconButton(onClick = { draggingItem = null }, modifier = Modifier.size(24.dp)) {
+                                Icon(Icons.Default.Close, contentDescription = "Отмена", tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                            }
+                        }
+                    }
+                }
+            }
+
             // Tier Rows
             items(tierRows, key = { it.id }) { row ->
                 TierRowCard(
                     row = row,
-                    onItemClick = { item -> selectedItemForAction = item to row.id },
-                    onDeleteRow = { viewModel.deleteTierRow(row) }
+                    isDragging = draggingItem != null,
+                    isCurrentSource = draggingItem?.second == row.id,
+                    onHeaderClick = { editingRow = row },
+                    onItemClick = { item -> selectedItemForSheet = item to row.id },
+                    onItemLongClick = { item -> draggingItem = item to row.id },
+                    onDropOnRow = {
+                        draggingItem?.let { (item, fromId) ->
+                            viewModel.moveTierItem(item.id, fromId, row.id)
+                            draggingItem = null
+                        }
+                    }
                 )
             }
 
@@ -159,7 +207,10 @@ fun TierListScreen(
                         .padding(top = 16.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
+                    border = BorderStroke(
+                        width = if (draggingItem != null) 2.dp else 1.dp,
+                        color = if (draggingItem != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)
+                    )
                 ) {
                     Column(
                         modifier = Modifier
@@ -179,10 +230,26 @@ fun TierListScreen(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
 
-                            TextButton(onClick = { showAddCustomItemDialog = true }) {
-                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Кастомный", fontWeight = FontWeight.Bold)
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                if (draggingItem != null && draggingItem?.second != null) {
+                                    FilledTonalButton(
+                                        onClick = {
+                                            draggingItem?.let { (item, fromId) ->
+                                                viewModel.moveTierItem(item.id, fromId, null)
+                                                draggingItem = null
+                                            }
+                                        },
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                                    ) {
+                                        Text("Сбросить сюда", fontSize = 12.sp)
+                                    }
+                                }
+
+                                TextButton(onClick = { showAddCustomItemDialog = true }) {
+                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Кастомный", fontWeight = FontWeight.Bold)
+                                }
                             }
                         }
 
@@ -203,7 +270,8 @@ fun TierListScreen(
                                 unassignedItems.forEach { item ->
                                     UnassignedItemThumbnail(
                                         item = item,
-                                        onClick = { selectedItemForAction = item to null }
+                                        onClick = { selectedItemForSheet = item to null },
+                                        onLongClick = { draggingItem = item to null }
                                     )
                                 }
                             }
@@ -214,90 +282,178 @@ fun TierListScreen(
         }
     }
 
-    // Action dialog when clicking an item (Move to Tier or Remove)
-    if (selectedItemForAction != null) {
-        val (item, fromRowId) = selectedItemForAction!!
+    // 1. Edit Tier Row Dialog (Click on Peak / S badge)
+    if (editingRow != null) {
+        val row = editingRow!!
+        var rowName by remember(row) { mutableStateOf(row.name) }
+        var rowColorHex by remember(row) { mutableStateOf(colorToHex(row.color)) }
+        var rowTextColorHex by remember(row) { mutableStateOf(colorToHex(row.textColor)) }
+
+        val bgPresets = listOf(
+            0xFFFF453AL to "Красный",
+            0xFFFF9F0AL to "Оранжевый",
+            0xFFFFD60AL to "Желтый",
+            0xFF30D158L to "Зеленый",
+            0xFF0A84FFL to "Синий",
+            0xFFBF5AF2L to "Фиолетовый",
+            0xFF5E5CE6L to "Индиго",
+            0xFF8E8E93L to "Серый"
+        )
+
+        val textPresets = listOf(
+            0xFFFFFFFFL to "Белый",
+            0xFF000000L to "Черный",
+            0xFFFFD60AL to "Желтый",
+            0xFFFF453AL to "Красный"
+        )
+
         AlertDialog(
-            onDismissRequest = { selectedItemForAction = null },
+            onDismissRequest = { editingRow = null },
             title = {
-                Text(
-                    text = item.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                Text("Настройка уровня тир-листа", fontWeight = FontWeight.Bold)
             },
             text = {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    Text(
-                        text = "Выберите уровень в тир-листе:",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    // Preview Badge
+                    val previewBg = parseHexColor(rowColorHex, row.color)
+                    val previewText = parseHexColor(rowTextColorHex, row.textColor)
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .width(120.dp)
+                                .height(56.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(previewBg)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = rowName.ifEmpty { "Tier" },
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp,
+                                color = Color(previewText),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value = rowName,
+                        onValueChange = { rowName = it },
+                        label = { Text("Название (например: Peak / S+)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
                     )
 
-                    tierRows.forEach { targetRow ->
-                        val isCurrent = fromRowId == targetRow.id
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable {
-                                    viewModel.moveTierItem(item.id, fromRowId, targetRow.id)
-                                    selectedItemForAction = null
-                                }
-                                .padding(8.dp),
-                            color = if (isCurrent) MaterialTheme.colorScheme.surfaceContainerHighest else MaterialTheme.colorScheme.surfaceContainerLow
+                    // Background color hex & palette
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Цвет фона (HEX):", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        OutlinedTextField(
+                            value = rowColorHex,
+                            onValueChange = { rowColorHex = it },
+                            placeholder = { Text("#FF453A") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
+                            bgPresets.forEach { (c, _) ->
                                 Box(
                                     modifier = Modifier
-                                        .size(24.dp)
-                                        .clip(RoundedCornerShape(4.dp))
-                                        .background(Color(targetRow.color)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = targetRow.name,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 11.sp,
-                                        color = Color(targetRow.textColor)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Text(
-                                    text = "Переместить в ${targetRow.name}",
-                                    fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
-                                    color = MaterialTheme.colorScheme.onSurface
+                                        .size(28.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(c))
+                                        .border(
+                                            width = if (parseHexColor(rowColorHex, 0L) == c) 2.dp else 0.dp,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            shape = CircleShape
+                                        )
+                                        .clickable { rowColorHex = colorToHex(c) }
                                 )
                             }
                         }
                     }
 
-                    if (fromRowId != null) {
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-                        TextButton(
-                            onClick = {
-                                viewModel.moveTierItem(item.id, fromRowId, null) // remove to pool
-                                selectedItemForAction = null
-                            },
-                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    // Text color hex & palette
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Цвет текста (HEX):", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        OutlinedTextField(
+                            value = rowTextColorHex,
+                            onValueChange = { rowTextColorHex = it },
+                            placeholder = { Text("#FFFFFF") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Icon(Icons.Default.DeleteOutline, contentDescription = null)
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Убрать в неразмещённые")
+                            textPresets.forEach { (c, label) ->
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color(c),
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                                    modifier = Modifier
+                                        .clickable { rowTextColorHex = colorToHex(c) }
+                                        .padding(2.dp)
+                                ) {
+                                    Text(
+                                        text = label,
+                                        color = if (c == 0xFFFFFFFFL) Color.Black else Color.White,
+                                        fontSize = 11.sp,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
                         }
+                    }
+
+                    HorizontalDivider()
+
+                    // Delete row option
+                    TextButton(
+                        onClick = {
+                            viewModel.deleteTierRow(row)
+                            editingRow = null
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.DeleteOutline, contentDescription = null)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Удалить этот уровень")
                     }
                 }
             },
-            confirmButton = {},
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val bg = parseHexColor(rowColorHex, row.color)
+                        val txt = parseHexColor(rowTextColorHex, row.textColor)
+                        viewModel.updateTierRowProperties(
+                            rowId = row.id,
+                            newName = rowName.trim().ifEmpty { row.name },
+                            newColor = bg,
+                            newTextColor = txt
+                        )
+                        editingRow = null
+                    }
+                ) {
+                    Text("Сохранить")
+                }
+            },
             dismissButton = {
-                TextButton(onClick = { selectedItemForAction = null }) {
-                    Text("Закрыть")
+                TextButton(onClick = { editingRow = null }) {
+                    Text("Отмена")
                 }
             },
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -305,7 +461,246 @@ fun TierListScreen(
         )
     }
 
-    // Presets Bottom Sheet / Menu
+    // 2. Action Bottom Sheet when clicking an item (Cover URL, Move to tier, Remove, Delete)
+    if (selectedItemForSheet != null) {
+        val (item, fromRowId) = selectedItemForSheet!!
+
+        ModalBottomSheet(
+            onDismissRequest = { selectedItemForSheet = null },
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                // Header with Cover & Title
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    CoverImage(
+                        coverUrl = item.coverUrl,
+                        title = item.title,
+                        width = 48.dp,
+                        height = 68.dp,
+                        corner = 6.dp
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = item.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = if (fromRowId != null) {
+                                val current = tierRows.find { it.id == fromRowId }
+                                "Текущий уровень: ${current?.name ?: "Тир"}"
+                            } else "Неразмещённый",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+
+                // Action: Change Cover URL
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .clickable {
+                            itemForCoverEdit = item
+                            selectedItemForSheet = null
+                        },
+                    color = MaterialTheme.colorScheme.surfaceContainerLow
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Image, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text("Изменить / удалить обложку", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    }
+                }
+
+                // Action: Move to specific Tier Row
+                Text("Переместить в уровень:", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    tierRows.forEach { targetRow ->
+                        val isCurrent = fromRowId == targetRow.id
+                        Surface(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable {
+                                    viewModel.moveTierItem(item.id, fromRowId, targetRow.id)
+                                    selectedItemForSheet = null
+                                },
+                            color = if (isCurrent) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
+                            border = BorderStroke(1.dp, Color(targetRow.color))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(16.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(targetRow.color))
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = targetRow.name,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Action: Remove from Tier to Unassigned pool
+                if (fromRowId != null) {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable {
+                                viewModel.moveTierItem(item.id, fromRowId, null)
+                                selectedItemForSheet = null
+                            },
+                        color = MaterialTheme.colorScheme.surfaceContainerLow
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.RemoveCircleOutline, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text("Убрать из тир-листа в неразмещённые", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                        }
+                    }
+                }
+
+                // Action: Delete custom item
+                if (item.sourceId == null) {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable {
+                                viewModel.deleteTierItem(item.id, fromRowId)
+                                selectedItemForSheet = null
+                            },
+                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.DeleteOutline, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text("Удалить этот кастомный тайтл", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+    }
+
+    // 3. Edit Item Cover Dialog
+    if (itemForCoverEdit != null) {
+        val targetItem = itemForCoverEdit!!
+        var coverInput by remember(targetItem) { mutableStateOf(targetItem.coverUrl ?: "") }
+
+        AlertDialog(
+            onDismissRequest = { itemForCoverEdit = null },
+            title = { Text("Обложка для «${targetItem.title}»") },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedTextField(
+                        value = coverInput,
+                        onValueChange = { coverInput = it },
+                        label = { Text("URL ссылки на картинку") },
+                        placeholder = { Text("https://example.com/cover.jpg") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    if (coverInput.isNotBlank()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            CoverImage(
+                                coverUrl = coverInput.trim(),
+                                title = targetItem.title,
+                                width = 80.dp,
+                                height = 110.dp,
+                                corner = 8.dp
+                            )
+                        }
+                    }
+
+                    if (targetItem.coverUrl != null) {
+                        TextButton(
+                            onClick = {
+                                viewModel.updateTierItemCover(targetItem.id, null)
+                                itemForCoverEdit = null
+                            },
+                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Icon(Icons.Default.Delete, contentDescription = null)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Удалить текущую обложку")
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.updateTierItemCover(targetItem.id, coverInput.trim().ifEmpty { null })
+                        itemForCoverEdit = null
+                    }
+                ) {
+                    Text("Сохранить")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { itemForCoverEdit = null }) {
+                    Text("Отмена")
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
+    // Presets Bottom Sheet
     if (showPresetMenu) {
         ModalBottomSheet(
             onDismissRequest = { showPresetMenu = false },
@@ -362,7 +757,7 @@ fun TierListScreen(
     // Add Custom Tier Row Dialog
     if (showAddRowDialog) {
         var rowName by remember { mutableStateOf("") }
-        var selectedColor by remember { mutableStateOf(0xFFFF453AL) } // red default
+        var selectedColor by remember { mutableStateOf(0xFFFF453AL) }
 
         val palette = listOf(
             0xFFFF453AL to "Красный",
@@ -493,40 +888,59 @@ fun TierListScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TierRowCard(
     row: TierListRow,
+    isDragging: Boolean,
+    isCurrentSource: Boolean,
+    onHeaderClick: () -> Unit,
     onItemClick: (TierItem) -> Unit,
-    onDeleteRow: () -> Unit,
+    onItemLongClick: (TierItem) -> Unit,
+    onDropOnRow: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .testTag("tier_row_${row.id}"),
+            .testTag("tier_row_${row.id}")
+            .then(
+                if (isDragging && !isCurrentSource) {
+                    Modifier.clickable { onDropOnRow() }
+                } else Modifier
+            ),
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
+        colors = CardDefaults.cardColors(
+            containerColor = if (isDragging && !isCurrentSource) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        border = BorderStroke(
+            width = if (isDragging && !isCurrentSource) 2.dp else 1.dp,
+            color = if (isDragging && !isCurrentSource) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)
+        )
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = 90.dp)
         ) {
-            // Tier Label Header
+            // Tier Label Header (Clickable to edit name, text color, background color via hex)
             Box(
                 modifier = Modifier
-                    .width(70.dp)
+                    .width(76.dp)
                     .fillMaxHeight()
-                    .background(Color(row.color)),
+                    .background(Color(row.color))
+                    .clickable { onHeaderClick() }
+                    .padding(horizontal = 4.dp, vertical = 8.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = row.name,
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = Color(row.textColor),
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 
@@ -541,16 +955,17 @@ fun TierRowCard(
             ) {
                 if (row.items.isEmpty()) {
                     Text(
-                        text = "Перетащите или нажмите на тайтл чтобы добавить",
+                        text = if (isDragging && !isCurrentSource) "Нажмите сюда, чтобы переместить" else "Нажмите на тайтл для добавления",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        color = if (isDragging && !isCurrentSource) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                         modifier = Modifier.padding(horizontal = 8.dp)
                     )
                 } else {
                     row.items.forEach { item ->
                         TierItemThumbnail(
                             item = item,
-                            onClick = { onItemClick(item) }
+                            onClick = { onItemClick(item) },
+                            onLongClick = { onItemLongClick(item) }
                         )
                     }
                 }
@@ -559,16 +974,21 @@ fun TierRowCard(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TierItemThumbnail(
     item: TierItem,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
             .width(60.dp)
-            .clickable { onClick() }
+            .combinedClickable(
+                onClick = { onClick() },
+                onLongClick = { onLongClick() }
+            )
             .testTag("tier_item_${item.id}"),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -591,17 +1011,22 @@ fun TierItemThumbnail(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun UnassignedItemThumbnail(
     item: TierItem,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
             .width(64.dp)
             .clip(RoundedCornerShape(8.dp))
-            .clickable { onClick() }
+            .combinedClickable(
+                onClick = { onClick() },
+                onLongClick = { onLongClick() }
+            )
             .padding(4.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -622,6 +1047,24 @@ fun UnassignedItemThumbnail(
             color = MaterialTheme.colorScheme.onSurface
         )
     }
+}
+
+fun parseHexColor(hex: String, defaultColor: Long): Long {
+    val clean = hex.trim().removePrefix("#")
+    return try {
+        when (clean.length) {
+            6 -> ("FF$clean").toLong(16)
+            8 -> clean.toLong(16)
+            else -> defaultColor
+        }
+    } catch (e: Exception) {
+        defaultColor
+    }
+}
+
+fun colorToHex(colorLong: Long): String {
+    val hex = String.format("%08X", colorLong)
+    return "#" + hex.substring(2)
 }
 
 fun exportTierListToGallery(

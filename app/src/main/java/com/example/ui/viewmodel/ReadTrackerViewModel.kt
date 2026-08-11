@@ -346,6 +346,66 @@ class ReadTrackerViewModel(
         }
     }
 
+    fun updateTierRowProperties(rowId: String, newName: String, newColor: Long, newTextColor: Long) {
+        viewModelScope.launch {
+            val rows = allTierRows.value.toMutableList()
+            val idx = rows.indexOfFirst { it.id == rowId }
+            if (idx != -1) {
+                rows[idx] = rows[idx].copy(name = newName, color = newColor, textColor = newTextColor)
+                repository.setTierRows(rows)
+            }
+        }
+    }
+
+    fun updateTierItemCover(itemId: String, newCoverUrl: String?) {
+        viewModelScope.launch {
+            val rows = allTierRows.value.toMutableList()
+            var changed = false
+            for (i in rows.indices) {
+                val items = rows[i].items.toMutableList()
+                val idx = items.indexOfFirst { it.id == itemId }
+                if (idx != -1) {
+                    val item = items[idx]
+                    items[idx] = item.copy(coverUrl = newCoverUrl?.ifBlank { null })
+                    rows[i] = rows[i].copy(items = items)
+                    changed = true
+                    if (item.sourceId != null) {
+                        val book = allBooks.value.find { it.id == item.sourceId }
+                        if (book != null) {
+                            repository.updateBook(book.copy(coverUrl = newCoverUrl?.ifBlank { null }, updatedAt = System.currentTimeMillis()))
+                        }
+                        val adap = allAdaptations.value.find { it.id == item.sourceId }
+                        if (adap != null) {
+                            repository.updateAdaptation(adap.copy(coverUrl = newCoverUrl?.ifBlank { null }, updatedAt = System.currentTimeMillis()))
+                        }
+                    }
+                    break
+                }
+            }
+            if (changed) {
+                repository.setTierRows(rows)
+            }
+        }
+    }
+
+    fun deleteTierItem(itemId: String, fromRowId: String?) {
+        viewModelScope.launch {
+            val rows = allTierRows.value.toMutableList()
+            if (fromRowId != null) {
+                val idx = rows.indexOfFirst { it.id == fromRowId }
+                if (idx != -1) {
+                    val row = rows[idx]
+                    val item = row.items.find { it.id == itemId }
+                    rows[idx] = row.copy(items = row.items.filter { it.id != itemId })
+                    repository.setTierRows(rows)
+                    if (item?.sourceId == null) {
+                        // Independent custom item removed completely
+                    }
+                }
+            }
+        }
+    }
+
     fun addTierRow(name: String, color: Long, textColor: Long) {
         viewModelScope.launch {
             val rows = allTierRows.value

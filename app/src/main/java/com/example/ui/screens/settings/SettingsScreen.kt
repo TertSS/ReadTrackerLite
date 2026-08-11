@@ -191,6 +191,36 @@ fun SettingsScreen(
                             )
                         }
                     }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+
+                    SettingToggleRow(
+                        title = "Запоминать последнюю вкладку",
+                        subtitle = "При повторном открытии приложения оставаться на той же вкладке (например, Отзывы)",
+                        checked = settings.rememberLastTab,
+                        onCheckedChange = { viewModel.updateAppSettings(settings.copy(rememberLastTab = it)) }
+                    )
+
+                    SettingToggleRow(
+                        title = "Единый стиль шапок и заголовков",
+                        subtitle = "Одинаковое оформление и размер заголовков на всех вкладках приложения",
+                        checked = settings.uniformHeadersEnabled,
+                        onCheckedChange = { viewModel.updateAppSettings(settings.copy(uniformHeadersEnabled = it)) }
+                    )
+
+                    SettingToggleRow(
+                        title = "Дробные оценки (например 7.3, 3.3)",
+                        subtitle = "Разрешить ставить точные нецелые оценки при клике по звёздам",
+                        checked = settings.fractionalRatingEnabled,
+                        onCheckedChange = { viewModel.updateAppSettings(settings.copy(fractionalRatingEnabled = it)) }
+                    )
+
+                    SettingToggleRow(
+                        title = "Обновленный редактор",
+                        subtitle = "Использовать обновленный интерфейс добавления и редактирования тайтлов",
+                        checked = settings.updatedEditorEnabled,
+                        onCheckedChange = { viewModel.updateAppSettings(settings.copy(updatedEditorEnabled = it)) }
+                    )
                 }
             }
 
@@ -518,6 +548,15 @@ fun SettingsScreen(
                         checked = settings.statsShowWords,
                         onCheckedChange = { viewModel.updateAppSettings(settings.copy(statsShowWords = it)) }
                     )
+
+                    if (settings.statsShowWords) {
+                        SettingToggleRow(
+                            title = "Скрыть эквивалент в блоке слов",
+                            subtitle = "Не показывать текстовое сравнение в томах (например, «≈ 4.5 тома») в карточке слов",
+                            checked = settings.hideWordsEquivalent,
+                            onCheckedChange = { viewModel.updateAppSettings(settings.copy(hideWordsEquivalent = it)) }
+                        )
+                    }
 
                     SettingToggleRow(
                         title = "Цели",

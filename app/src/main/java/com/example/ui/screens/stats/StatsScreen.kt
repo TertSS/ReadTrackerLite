@@ -117,7 +117,7 @@ fun StatsScreen(
                 ) {
                     Text(
                         text = "Статистика",
-                        style = MaterialTheme.typography.headlineMedium,
+                        style = if (settings.uniformHeadersEnabled) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -300,12 +300,14 @@ fun StatsScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
 
-                        val approxVolumes = String.format("%.1f", totalWordsRead.toDouble() / 60_000.0)
-                        Text(
-                            text = "Эквивалент ~$approxVolumes стандартных печатных томов (по ~60 тыс. слов)",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        if (!settings.hideWordsEquivalent) {
+                            val approxVolumes = String.format("%.1f", totalWordsRead.toDouble() / 60_000.0)
+                            Text(
+                                text = "Эквивалент ~$approxVolumes стандартных печатных томов (по ~60 тыс. слов)",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
 
                         if (settings.wordsTarget > 0) {
                             val wordsProgress = (totalWordsRead.toFloat() / settings.wordsTarget).coerceIn(0f, 1f)
@@ -323,20 +325,9 @@ fun StatsScreen(
                 }
             }
 
-            // Bento Metric Grid: Books
+            // Bento Metric Grid: Books (Series completed on LEFT, Volumes read on RIGHT)
             if (activeTab == "ALL" || activeTab == "BOOKS") {
                 val bookCards = buildList<@Composable (Modifier) -> Unit> {
-                    if (settings.statsShowVolumes) {
-                        add { mod ->
-                            BentoStatCard(
-                                modifier = mod,
-                                icon = Icons.Default.CollectionsBookmark,
-                                title = "Томов прочитано",
-                                value = "$totalVolumesRead",
-                                color = MaterialTheme.colorScheme.secondary
-                            )
-                        }
-                    }
                     if (settings.statsShowTitlesCompleted) {
                         add { mod ->
                             BentoStatCard(
@@ -345,6 +336,17 @@ fun StatsScreen(
                                 title = "Завершено серий",
                                 value = "$totalBooksRead",
                                 color = StarGold
+                            )
+                        }
+                    }
+                    if (settings.statsShowVolumes) {
+                        add { mod ->
+                            BentoStatCard(
+                                modifier = mod,
+                                icon = Icons.Default.CollectionsBookmark,
+                                title = "Томов прочитано",
+                                value = "$totalVolumesRead",
+                                color = MaterialTheme.colorScheme.secondary
                             )
                         }
                     }

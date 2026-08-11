@@ -605,6 +605,7 @@ fun AddEditTitleScreen(
                                 rating = rating,
                                 scale = settings.ratingScale,
                                 editable = true,
+                                allowFractional = settings.fractionalRatingEnabled,
                                 onRatingChanged = { rating = it }
                             )
                         }

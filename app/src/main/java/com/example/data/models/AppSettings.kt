@@ -67,6 +67,12 @@ data class AppSettings(
     // Tier list active mode
     val tierListIndependent: Boolean = false,
     
+    // UI enhancements & Customization toggles
+    val fractionalRatingEnabled: Boolean = false,
+    val uniformHeadersEnabled: Boolean = false,
+    val updatedEditorEnabled: Boolean = false,
+    val hideWordsEquivalent: Boolean = false,
+    
     // Animation settings
     val disableAnimations: Boolean = false
 )

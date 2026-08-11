@@ -7,10 +7,13 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.StarHalf
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -30,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.data.models.*
 import com.example.ui.theme.*
+import java.util.Locale
 
 @Composable
 fun ReadTrackerBottomNav(
@@ -250,57 +254,145 @@ fun StarRatingBar(
     rating: Float, // 0..10
     scale: RatingScale = RatingScale.STARS_10,
     editable: Boolean = false,
+    allowFractional: Boolean = false,
     onRatingChanged: ((Float) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val maxCount = if (scale == RatingScale.STARS_5) 5 else 10
     val effectiveRating = if (scale == RatingScale.STARS_5) rating / 2f else rating
+    val isStar10 = scale == RatingScale.STARS_10
 
-    Row(
+    Column(
         modifier = modifier.testTag("star_rating_bar"),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        for (i in 1..maxCount) {
-            val isFilled = i <= Math.round(effectiveRating)
-            val icon = if (isFilled) Icons.Default.Star else Icons.Default.StarBorder
-            val tint = if (isFilled) StarGold else MaterialTheme.colorScheme.surfaceContainerHighest
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            for (i in 1..maxCount) {
+                val icon = when {
+                    effectiveRating >= i - 0.2f -> Icons.Default.Star
+                    effectiveRating >= i - 0.7f -> Icons.AutoMirrored.Filled.StarHalf
+                    else -> Icons.Default.StarBorder
+                }
+                val isFilled = effectiveRating >= i - 0.7f
+                val tint = if (isFilled) StarGold else MaterialTheme.colorScheme.surfaceContainerHighest
 
-            IconButton(
-                onClick = {
-                    if (editable && onRatingChanged != null) {
-                        val newRating = if (scale == RatingScale.STARS_5) i * 2f else i.toFloat()
-                        if (effectiveRating == i.toFloat()) {
-                            onRatingChanged(0f) // Reset
-                        } else {
-                            onRatingChanged(newRating)
+                val btnSize = if (editable) (if (isStar10) 26.dp else 34.dp) else 18.dp
+                val iconSize = if (editable) (if (isStar10) 20.dp else 26.dp) else 14.dp
+
+                IconButton(
+                    onClick = {
+                        if (editable && onRatingChanged != null) {
+                            val newRating = if (scale == RatingScale.STARS_5) i * 2f else i.toFloat()
+                            if (effectiveRating == i.toFloat()) {
+                                onRatingChanged(0f) // Reset
+                            } else {
+                                onRatingChanged(newRating)
+                            }
                         }
-                    }
-                },
-                enabled = editable,
-                modifier = Modifier.size(if (editable) 36.dp else 20.dp)
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = "Звезда $i",
-                    tint = tint,
-                    modifier = Modifier.size(if (editable) 28.dp else 16.dp)
-                )
+                    },
+                    enabled = editable,
+                    modifier = Modifier.size(btnSize)
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = "Звезда $i",
+                        tint = tint,
+                        modifier = Modifier.size(iconSize)
+                    )
+                }
+            }
+
+            if (editable && rating > 0f) {
+                Spacer(modifier = Modifier.width(2.dp))
+                IconButton(
+                    onClick = { onRatingChanged?.invoke(0f) },
+                    modifier = Modifier.size(if (isStar10) 24.dp else 28.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Clear,
+                        contentDescription = "Сбросить оценку",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
             }
         }
 
-        if (editable && rating > 0f) {
-            Spacer(modifier = Modifier.width(4.dp))
-            IconButton(
-                onClick = { onRatingChanged?.invoke(0f) },
-                modifier = Modifier.size(32.dp)
+        // Fractional precision slider / stepper when enabled
+        if (editable && allowFractional) {
+            val maxLimit = if (scale == RatingScale.STARS_5) 5f else 10f
+            val currentScore = if (scale == RatingScale.STARS_5) rating / 2f else rating
+            val scoreText = if (currentScore % 1f == 0f) String.format(Locale.US, "%.0f", currentScore) else String.format(Locale.US, "%.1f", currentScore)
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Clear,
-                    contentDescription = "Сбросить оценку",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp)
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+                ) {
+                    Text(
+                        text = "★ $scoreText/$maxLimit",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+
+                Slider(
+                    value = currentScore.coerceIn(0f, maxLimit),
+                    onValueChange = { newVal ->
+                        val rounded = Math.round(newVal * 10f) / 10f
+                        val actualRating = if (scale == RatingScale.STARS_5) rounded * 2f else rounded
+                        onRatingChanged?.invoke(actualRating)
+                    },
+                    valueRange = 0f..maxLimit,
+                    steps = ((maxLimit * 10).toInt() - 1),
+                    modifier = Modifier.weight(1f),
+                    colors = SliderDefaults.colors(
+                        thumbColor = StarGold,
+                        activeTrackColor = StarGold,
+                        inactiveTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                    )
                 )
+
+                // Quick -0.1 and +0.1 buttons
+                Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                    FilledTonalIconButton(
+                        onClick = {
+                            val next = (currentScore - 0.1f).coerceAtLeast(0f)
+                            val rounded = Math.round(next * 10f) / 10f
+                            val actualRating = if (scale == RatingScale.STARS_5) rounded * 2f else rounded
+                            onRatingChanged?.invoke(actualRating)
+                        },
+                        modifier = Modifier.size(28.dp),
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Text("-", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    }
+                    FilledTonalIconButton(
+                        onClick = {
+                            val next = (currentScore + 0.1f).coerceAtMost(maxLimit)
+                            val rounded = Math.round(next * 10f) / 10f
+                            val actualRating = if (scale == RatingScale.STARS_5) rounded * 2f else rounded
+                            onRatingChanged?.invoke(actualRating)
+                        },
+                        modifier = Modifier.size(28.dp),
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Text("+", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    }
+                }
             }
         }
     }

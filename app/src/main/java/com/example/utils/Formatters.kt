@@ -52,11 +52,12 @@ object Formatters {
     fun formatRating(rating: Float, scale: com.example.data.models.RatingScale): String {
         if (rating <= 0f) return "—"
         return if (scale == com.example.data.models.RatingScale.STARS_5) {
-            val star5 = Math.round(rating / 2f).coerceIn(1, 5)
-            "$star5/5"
+            val star5 = rating / 2f
+            val formatted = if (star5 % 1f == 0f) String.format(Locale.US, "%.0f", star5) else String.format(Locale.US, "%.1f", star5)
+            "$formatted/5"
         } else {
-            val star10 = Math.round(rating).coerceIn(1, 10)
-            "$star10/10"
+            val formatted = if (rating % 1f == 0f) String.format(Locale.US, "%.0f", rating) else String.format(Locale.US, "%.1f", rating)
+            "$formatted/10"
         }
     }
 }
