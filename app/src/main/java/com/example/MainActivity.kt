@@ -21,6 +21,7 @@ import com.example.data.models.Adaptation
 import com.example.data.models.LibraryMode
 import com.example.data.repository.ReadTrackerRepository
 import com.example.ui.components.ReadTrackerBottomNav
+import com.example.ui.components.ReadTrackerNavigationRail
 import com.example.ui.screens.details.AdaptationDetailScreen
 import com.example.ui.screens.details.TitleDetailScreen
 import com.example.ui.screens.edit.AddEditAdaptationScreen
@@ -164,38 +165,53 @@ fun MainAppContent(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
-        // Main Screen View
-        Scaffold(
-            modifier = Modifier.fillMaxSize(),
-            contentWindowInsets = WindowInsets(0, 0, 0, 0),
-            bottomBar = {
-                val isOverlayOpen = selectedBookId != null ||
-                    selectedAdaptationId != null ||
-                    showAddBook ||
-                    showAddAdaptation ||
-                    editingBook != null ||
-                    editingAdaptation != null
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val isTablet = settings.tabletLayoutEnabled && maxWidth >= 600.dp
+        val isOverlayOpen = selectedBookId != null ||
+            selectedAdaptationId != null ||
+            showAddBook ||
+            showAddAdaptation ||
+            editingBook != null ||
+            editingAdaptation != null
 
-                if (!isOverlayOpen) {
-                    ReadTrackerBottomNav(
-                        currentTab = currentTab,
-                        onTabSelected = { viewModel.setTab(it) }
-                    )
-                }
+        Row(modifier = Modifier.fillMaxSize()) {
+            if (isTablet && !isOverlayOpen) {
+                ReadTrackerNavigationRail(
+                    currentTab = currentTab,
+                    onTabSelected = { viewModel.setTab(it) }
+                )
             }
-        ) { paddingValues ->
+
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = paddingValues.calculateBottomPadding())
+                    .weight(1f)
+                    .fillMaxHeight()
             ) {
-                when (currentTab) {
-                    "library" -> LibraryScreen(viewModel = viewModel)
-                    "reviews" -> ReviewsScreen(viewModel = viewModel)
-                    "stats" -> StatsScreen(viewModel = viewModel)
-                    "tier_list" -> TierListScreen(viewModel = viewModel)
-                    "settings" -> SettingsScreen(viewModel = viewModel)
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    contentWindowInsets = WindowInsets(0, 0, 0, 0),
+                    bottomBar = {
+                        if (!isTablet && !isOverlayOpen) {
+                            ReadTrackerBottomNav(
+                                currentTab = currentTab,
+                                onTabSelected = { viewModel.setTab(it) }
+                            )
+                        }
+                    }
+                ) { paddingValues ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(bottom = paddingValues.calculateBottomPadding())
+                    ) {
+                        when (currentTab) {
+                            "library" -> LibraryScreen(viewModel = viewModel)
+                            "reviews" -> ReviewsScreen(viewModel = viewModel)
+                            "stats" -> StatsScreen(viewModel = viewModel)
+                            "tier_list" -> TierListScreen(viewModel = viewModel)
+                            "settings" -> SettingsScreen(viewModel = viewModel)
+                        }
+                    }
                 }
             }
         }

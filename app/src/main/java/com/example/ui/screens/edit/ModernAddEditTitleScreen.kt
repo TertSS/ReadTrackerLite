@@ -84,21 +84,21 @@ fun ModernAddEditTitleScreen(
         if (title.trim().isEmpty()) {
             errorMessage = "Пожалуйста, введите название произведения"
         } else {
-            val wordsLong = words.toLongOrNull() ?: 0L
-            val totalWordsLong = totalWords.toLongOrNull() ?: 0L
-            val volsInt = volumes.toIntOrNull() ?: 0
-            val totalVolsInt = totalVolumes.toIntOrNull() ?: 0
+            val finalVolsInt = if (hasDetailedVolumes && detailedVolumes.isNotEmpty()) detailedVolumes.count { it.isRead } else (volumes.toIntOrNull() ?: 0)
+            val finalTotalVolsInt = if (hasDetailedVolumes && detailedVolumes.isNotEmpty()) maxOf(totalVolumes.toIntOrNull() ?: 0, detailedVolumes.size) else (totalVolumes.toIntOrNull() ?: 0)
+            val finalWordsLong = if (hasDetailedVolumes && detailedVolumes.isNotEmpty()) detailedVolumes.filter { it.isRead }.sumOf { it.wordCount } else (words.toLongOrNull() ?: 0L)
+            val finalTotalWordsLong = if (hasDetailedVolumes && detailedVolumes.isNotEmpty()) detailedVolumes.sumOf { it.wordCount } else (totalWords.toLongOrNull() ?: 0L)
             val chapsInt = chapters.toIntOrNull() ?: 0
             val totalChapsInt = totalChapters.toIntOrNull() ?: 0
             val endsInt = endings.toIntOrNull() ?: 0
             val totalEndsInt = totalEndings.toIntOrNull() ?: 0
 
-            if (totalVolsInt > 0 && volsInt > totalVolsInt) {
-                errorMessage = "Прочитано томов ($volsInt) не может быть больше общего числа ($totalVolsInt)"
+            if (!hasDetailedVolumes && finalTotalVolsInt > 0 && finalVolsInt > finalTotalVolsInt) {
+                errorMessage = "Прочитано томов ($finalVolsInt) не может быть больше общего числа ($finalTotalVolsInt)"
             } else if (totalChapsInt > 0 && chapsInt > totalChapsInt) {
                 errorMessage = "Прочитано глав ($chapsInt) не может быть больше общего числа ($totalChapsInt)"
-            } else if (totalWordsLong > 0 && wordsLong > totalWordsLong) {
-                errorMessage = "Прочитано слов ($wordsLong) не может быть больше общего числа ($totalWordsLong)"
+            } else if (!hasDetailedVolumes && finalTotalWordsLong > 0 && finalWordsLong > finalTotalWordsLong) {
+                errorMessage = "Прочитано слов ($finalWordsLong) не может быть больше общего числа ($finalTotalWordsLong)"
             } else {
                 val bookToSave = (existingBook ?: BookTitle(title = title.trim())).copy(
                     title = title.trim(),
@@ -112,10 +112,10 @@ fun ModernAddEditTitleScreen(
                     droppedReason = if (status == TitleStatus.DROPPED) droppedReason.trim() else "",
                     showInReviews = showInReviews,
                     coverUrl = coverUrl.trim().ifEmpty { null },
-                    words = wordsLong,
-                    totalWords = totalWordsLong,
-                    volumes = volsInt,
-                    totalVolumes = totalVolsInt,
+                    words = finalWordsLong,
+                    totalWords = finalTotalWordsLong,
+                    volumes = finalVolsInt,
+                    totalVolumes = finalTotalVolsInt,
                     isOngoing = isOngoing,
                     chapters = chapsInt,
                     totalChapters = totalChapsInt,
@@ -616,31 +616,216 @@ fun ModernAddEditTitleScreen(
                                 }
 
                                 TitleFormat.SERIES, TitleFormat.NOVEL, TitleFormat.SINGLE -> {
-                                    Text("Тома", fontWeight = FontWeight.SemiBold)
+                                    Text("Способ учёта томов", fontWeight = FontWeight.SemiBold)
+                                    
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        OutlinedTextField(
-                                            value = volumes,
-                                            onValueChange = { volumes = it.filter { ch -> ch.isDigit() } },
-                                            label = { Text("Прочитано томов") },
-                                            modifier = Modifier.weight(1f),
-                                            singleLine = true
+                                        FilterChip(
+                                            selected = !hasDetailedVolumes,
+                                            onClick = { hasDetailedVolumes = false },
+                                            label = { Text("Общий счётчик") },
+                                            leadingIcon = if (!hasDetailedVolumes) {
+                                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                                            } else null,
+                                            modifier = Modifier.weight(1f)
                                         )
-                                        OutlinedTextField(
-                                            value = totalVolumes,
-                                            onValueChange = { totalVolumes = it.filter { ch -> ch.isDigit() } },
-                                            label = { Text("Всего томов (0 - ?)") },
-                                            modifier = Modifier.weight(1f),
-                                            singleLine = true
+
+                                        FilterChip(
+                                            selected = hasDetailedVolumes,
+                                            onClick = {
+                                                hasDetailedVolumes = true
+                                                if (detailedVolumes.isEmpty()) {
+                                                    val curVols = volumes.toIntOrNull() ?: 1
+                                                    val count = if (curVols > 0) curVols else 1
+                                                    val defaultWordsPerVol = if (words.toLongOrNull() ?: 0L > 0) (words.toLong() / count) else 60000L
+                                                    detailedVolumes = (1..count).map { num ->
+                                                        VolumeEntry(
+                                                            volumeNumber = num,
+                                                            wordCount = defaultWordsPerVol,
+                                                            isRead = true
+                                                        )
+                                                    }
+                                                }
+                                            },
+                                            label = { Text("По томам (со словами)") },
+                                            leadingIcon = if (hasDetailedVolumes) {
+                                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                                            } else null,
+                                            modifier = Modifier.weight(1f)
                                         )
+                                    }
+
+                                    if (!hasDetailedVolumes) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                        ) {
+                                            OutlinedTextField(
+                                                value = volumes,
+                                                onValueChange = { volumes = it.filter { ch -> ch.isDigit() } },
+                                                label = { Text("Прочитано томов") },
+                                                modifier = Modifier.weight(1f),
+                                                singleLine = true
+                                            )
+                                            OutlinedTextField(
+                                                value = totalVolumes,
+                                                onValueChange = { totalVolumes = it.filter { ch -> ch.isDigit() } },
+                                                label = { Text("Всего томов (0 - ?)") },
+                                                modifier = Modifier.weight(1f),
+                                                singleLine = true
+                                            )
+                                        }
+                                    } else {
+                                        // Summary stats for detailed volumes
+                                        val totalVolsCount = detailedVolumes.size
+                                        val readVolsCount = detailedVolumes.count { it.isRead }
+                                        val totalWordsSum = detailedVolumes.sumOf { it.wordCount }
+                                        val readWordsSum = detailedVolumes.filter { it.isRead }.sumOf { it.wordCount }
+
+                                        Surface(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                                        ) {
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(12.dp),
+                                                horizontalArrangement = Arrangement.SpaceAround,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                    Text("Тома", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                    Text("$readVolsCount из $totalVolsCount", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                                }
+                                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                    Text("Слова", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                    Text("${Formatters.formatNumber(readWordsSum, shorten = settings.shortenNumbers)} / ${Formatters.formatNumber(totalWordsSum, shorten = settings.shortenNumbers)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+                                                }
+                                            }
+                                        }
+
+                                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                            detailedVolumes.forEachIndexed { index, volume ->
+                                                Surface(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    shape = RoundedCornerShape(12.dp),
+                                                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                                    border = if (volume.isRead) BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)) else null
+                                                ) {
+                                                    Column(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .padding(12.dp),
+                                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                                    ) {
+                                                        Row(
+                                                            modifier = Modifier.fillMaxWidth(),
+                                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                                            verticalAlignment = Alignment.CenterVertically
+                                                        ) {
+                                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                                Checkbox(
+                                                                    checked = volume.isRead,
+                                                                    onCheckedChange = { isChecked ->
+                                                                        detailedVolumes = detailedVolumes.toMutableList().also { list ->
+                                                                            list[index] = volume.copy(isRead = isChecked)
+                                                                        }
+                                                                    }
+                                                                )
+                                                                Text(
+                                                                    text = if (volume.isRead) "Том ${volume.volumeNumber} (Прочитан)" else "Том ${volume.volumeNumber} (Не прочитан)",
+                                                                    fontWeight = if (volume.isRead) FontWeight.Bold else FontWeight.Normal,
+                                                                    color = if (volume.isRead) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                                                )
+                                                            }
+
+                                                            if (detailedVolumes.size > 1) {
+                                                                IconButton(
+                                                                    onClick = {
+                                                                        detailedVolumes = detailedVolumes.toMutableList().also { list ->
+                                                                            list.removeAt(index)
+                                                                        }
+                                                                    },
+                                                                    modifier = Modifier.size(28.dp)
+                                                                ) {
+                                                                    Icon(Icons.Default.DeleteOutline, contentDescription = "Удалить том", tint = MaterialTheme.colorScheme.error)
+                                                                }
+                                                            }
+                                                        }
+
+                                                        Row(
+                                                            modifier = Modifier.fillMaxWidth(),
+                                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                                        ) {
+                                                            OutlinedTextField(
+                                                                value = "${volume.volumeNumber}",
+                                                                onValueChange = { str ->
+                                                                    val num = str.filter { it.isDigit() }.toIntOrNull() ?: (index + 1)
+                                                                    detailedVolumes = detailedVolumes.toMutableList().also { list ->
+                                                                        list[index] = volume.copy(volumeNumber = num)
+                                                                    }
+                                                                },
+                                                                label = { Text("№ тома") },
+                                                                modifier = Modifier.weight(1f),
+                                                                singleLine = true
+                                                            )
+
+                                                            OutlinedTextField(
+                                                                value = "${volume.wordCount}",
+                                                                onValueChange = { str ->
+                                                                    val wordsCount = str.filter { it.isDigit() }.toLongOrNull() ?: 0L
+                                                                    detailedVolumes = detailedVolumes.toMutableList().also { list ->
+                                                                        list[index] = volume.copy(wordCount = wordsCount)
+                                                                    }
+                                                                },
+                                                                label = { Text("Слов в томе") },
+                                                                modifier = Modifier.weight(2f),
+                                                                singleLine = true
+                                                            )
+                                                        }
+
+                                                        OutlinedTextField(
+                                                            value = volume.name,
+                                                            onValueChange = { str ->
+                                                                detailedVolumes = detailedVolumes.toMutableList().also { list ->
+                                                                    list[index] = volume.copy(name = str)
+                                                                }
+                                                            },
+                                                            label = { Text("Название тома (опционально)") },
+                                                            placeholder = { Text("Например: Арка 1") },
+                                                            modifier = Modifier.fillMaxWidth(),
+                                                            singleLine = true
+                                                        )
+                                                    }
+                                                }
+                                            }
+
+                                            OutlinedButton(
+                                                onClick = {
+                                                    val nextNum = (detailedVolumes.maxOfOrNull { it.volumeNumber } ?: 0) + 1
+                                                    val lastWordCount = detailedVolumes.lastOrNull()?.wordCount ?: 60000L
+                                                    detailedVolumes = detailedVolumes + VolumeEntry(
+                                                        volumeNumber = nextNum,
+                                                        wordCount = lastWordCount,
+                                                        isRead = true
+                                                    )
+                                                },
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Text("Добавить следующий том (${detailedVolumes.size + 1})")
+                                            }
+                                        }
                                     }
                                 }
                             }
 
-                            // Words counter
-                            if (format != TitleFormat.VISUAL_NOVEL && !settings.hideWordsEquivalent) {
+                            // Words counter (only in general mode)
+                            if (!hasDetailedVolumes && format != TitleFormat.VISUAL_NOVEL && !settings.hideWordsEquivalent) {
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                                 Text("Количество слов", fontWeight = FontWeight.SemiBold)
                                 Row(
@@ -666,82 +851,6 @@ fun ModernAddEditTitleScreen(
                         }
                     }
 
-                    // Detailed Volume Breakdown Toggle
-                    if (format == TitleFormat.SERIES || format == TitleFormat.NOVEL || format == TitleFormat.SINGLE || format == TitleFormat.HYBRID) {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text("Потомный менеджер", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                        Text("Детализировать каждый том по словам", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                    Switch(
-                                        checked = hasDetailedVolumes,
-                                        onCheckedChange = {
-                                            hasDetailedVolumes = it
-                                            if (it && detailedVolumes.isEmpty()) {
-                                                detailedVolumes = listOf(VolumeEntry(volumeNumber = 1, wordCount = 50000L))
-                                            }
-                                        }
-                                    )
-                                }
-
-                                if (hasDetailedVolumes) {
-                                    detailedVolumes.forEachIndexed { index, volume ->
-                                        Surface(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            shape = RoundedCornerShape(10.dp),
-                                            color = MaterialTheme.colorScheme.surfaceContainerHigh
-                                        ) {
-                                            Row(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(10.dp),
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Column {
-                                                    Text("Том ${volume.volumeNumber}", fontWeight = FontWeight.Bold)
-                                                    Text("${Formatters.formatNumber(volume.wordCount)} слов", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                                }
-                                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                                    IconButton(
-                                                        onClick = {
-                                                            detailedVolumes = detailedVolumes.toMutableList().also { list ->
-                                                                list.removeAt(index)
-                                                            }
-                                                        },
-                                                        modifier = Modifier.size(32.dp)
-                                                    ) {
-                                                        Icon(Icons.Default.DeleteOutline, contentDescription = "Удалить", tint = MaterialTheme.colorScheme.error)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-
-                                    TextButton(
-                                        onClick = {
-                                            val nextNum = (detailedVolumes.maxOfOrNull { it.volumeNumber } ?: 0) + 1
-                                            detailedVolumes = detailedVolumes + VolumeEntry(volumeNumber = nextNum, wordCount = 50000L)
-                                        }
-                                    ) {
-                                        Icon(Icons.Default.Add, contentDescription = null)
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Добавить следующий том")
-                                    }
-                                }
-                            }
-                        }
-                    }
                 }
 
                 2 -> {

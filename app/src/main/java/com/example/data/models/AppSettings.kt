@@ -18,13 +18,13 @@ data class AppSettings(
     val bookmarksEnabled: Boolean = true,
     val searchFilterEnabled: Boolean = true,
     val librarySearchMode: String = "SEARCH_AND_FILTER", // "SEARCH_ONLY", "SEARCH_AND_FILTER"
-    val showLibraryModeSwitcher: Boolean = true,
+    val showLibraryModeSwitcher: Boolean = false,
     val totalWordsEnabled: Boolean = true,
     val startAfterAdaptationEnabled: Boolean = true,
     val shortenNumbers: Boolean = false,
     val sortByStatus: Boolean = true,
     val showCoversInLibrary: Boolean = true,
-    val showStatusFiltersInLibrary: Boolean = true,
+    val showStatusFiltersInLibrary: Boolean = false,
     val coverlessCardStyle: String = "CLASSIC", // CLASSIC, MINIMAL, GRADIENT, COMPACT
     val statsActiveTab: String = "ALL", // ALL, BOOKS, ADAPTATIONS
     val statsDefaultTab: String = "ALL", // ALL, BOOKS, ADAPTATIONS
@@ -68,12 +68,13 @@ data class AppSettings(
     val tierListIndependent: Boolean = false,
     
     // UI enhancements & Customization toggles
-    val fractionalRatingEnabled: Boolean = false,
-    val uniformHeadersEnabled: Boolean = false,
-    val updatedEditorEnabled: Boolean = false,
+    val fractionalRatingEnabled: Boolean = true,
+    val uniformHeadersEnabled: Boolean = true,
+    val updatedEditorEnabled: Boolean = true,
     val hideWordsEquivalent: Boolean = false,
     val alignFormatWithTitle: Boolean = false,
-    val roundedInputFields: Boolean = false,
+    val roundedInputFields: Boolean = true,
+    val tabletLayoutEnabled: Boolean = true,
     
     // Animation settings
     val disableAnimations: Boolean = false

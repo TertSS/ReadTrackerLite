@@ -2,7 +2,10 @@ package com.example.data.models
 
 data class VolumeEntry(
     val volumeNumber: Int,
-    val wordCount: Long
+    val wordCount: Long = 0L,
+    val chaptersCount: Int = 0,
+    val isRead: Boolean = false,
+    val name: String = ""
 )
 
 data class SeasonEntry(

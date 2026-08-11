@@ -474,59 +474,48 @@ fun ModernAddEditAdaptationScreen(
 
                                             Row(
                                                 modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                                horizontalArrangement = Arrangement.spacedBy(10.dp),
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
-                                                OutlinedButton(
-                                                    onClick = {
-                                                        if (s.watchedEpisodes > 0) {
-                                                            seasons = seasons.toMutableList().also { list ->
-                                                                list[index] = s.copy(watchedEpisodes = s.watchedEpisodes - 1)
-                                                            }
-                                                        }
-                                                    },
-                                                    modifier = Modifier.weight(1f)
-                                                ) {
-                                                    Text("-1")
-                                                }
-
                                                 OutlinedTextField(
                                                     value = "${s.watchedEpisodes}",
                                                     onValueChange = { str ->
-                                                        val num = str.toIntOrNull() ?: 0
+                                                        val num = str.filter { it.isDigit() }.toIntOrNull() ?: 0
                                                         seasons = seasons.toMutableList().also { list ->
-                                                            list[index] = s.copy(watchedEpisodes = num)
+                                                             list[index] = s.copy(watchedEpisodes = num)
                                                         }
                                                     },
-                                                    label = { Text("Серий") },
-                                                    modifier = Modifier.weight(1.5f),
+                                                    label = { Text("Просмотрено") },
+                                                    modifier = Modifier.weight(1f),
                                                     singleLine = true
                                                 )
 
                                                 OutlinedTextField(
                                                     value = "${s.totalEpisodes}",
                                                     onValueChange = { str ->
-                                                        val num = str.toIntOrNull() ?: 0
+                                                        val num = str.filter { it.isDigit() }.toIntOrNull() ?: 0
                                                         seasons = seasons.toMutableList().also { list ->
                                                             list[index] = s.copy(totalEpisodes = num)
                                                         }
                                                     },
-                                                    label = { Text("Всего") },
-                                                    modifier = Modifier.weight(1.5f),
+                                                    label = { Text("Всего серий") },
+                                                    modifier = Modifier.weight(1f),
                                                     singleLine = true
                                                 )
-
-                                                Button(
-                                                    onClick = {
-                                                        seasons = seasons.toMutableList().also { list ->
-                                                            list[index] = s.copy(watchedEpisodes = s.watchedEpisodes + 1)
-                                                        }
-                                                    },
-                                                    modifier = Modifier.weight(1f)
-                                                ) {
-                                                    Text("+1")
-                                                }
                                             }
+
+                                            OutlinedTextField(
+                                                value = "${s.defaultEpisodeDurationMinutes}",
+                                                onValueChange = { str ->
+                                                    val num = str.filter { it.isDigit() }.toIntOrNull() ?: 24
+                                                    seasons = seasons.toMutableList().also { list ->
+                                                        list[index] = s.copy(defaultEpisodeDurationMinutes = num)
+                                                    }
+                                                },
+                                                label = { Text("Длительность серии (мин)") },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                singleLine = true
+                                            )
                                         }
                                     }
                                 }
@@ -564,42 +553,72 @@ fun ModernAddEditAdaptationScreen(
                                         shape = RoundedCornerShape(12.dp),
                                         color = MaterialTheme.colorScheme.surfaceContainerHigh
                                     ) {
-                                        Row(
+                                        Column(
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .padding(12.dp),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically
+                                            verticalArrangement = Arrangement.spacedBy(10.dp)
                                         ) {
                                             Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                                modifier = Modifier.weight(1f)
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
                                             ) {
-                                                Checkbox(
-                                                    checked = m.isWatched,
-                                                    onCheckedChange = { chk ->
-                                                        movies = movies.toMutableList().also { list ->
-                                                            list[index] = m.copy(isWatched = chk)
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Checkbox(
+                                                        checked = m.isWatched,
+                                                        onCheckedChange = { chk ->
+                                                            movies = movies.toMutableList().also { list ->
+                                                                list[index] = m.copy(isWatched = chk)
+                                                            }
                                                         }
+                                                    )
+                                                    Text(
+                                                        text = if (m.isWatched) "Просмотрен" else "Не просмотрен",
+                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        fontWeight = if (m.isWatched) FontWeight.Bold else FontWeight.Normal,
+                                                        color = if (m.isWatched) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                                    )
+                                                }
+
+                                                if (movies.size > 1) {
+                                                    IconButton(
+                                                        onClick = {
+                                                            movies = movies.toMutableList().also { it.removeAt(index) }
+                                                        },
+                                                        modifier = Modifier.size(24.dp)
+                                                    ) {
+                                                        Icon(Icons.Default.DeleteOutline, contentDescription = "Удалить", tint = MaterialTheme.colorScheme.error)
                                                     }
-                                                )
-                                                Column {
-                                                    Text(m.title, fontWeight = FontWeight.Bold)
-                                                    Text("${m.durationMinutes} мин", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                                 }
                                             }
 
-                                            if (movies.size > 1) {
-                                                IconButton(
-                                                    onClick = {
-                                                        movies = movies.toMutableList().also { it.removeAt(index) }
-                                                    },
-                                                    modifier = Modifier.size(24.dp)
-                                                ) {
-                                                    Icon(Icons.Default.DeleteOutline, contentDescription = "Удалить", tint = MaterialTheme.colorScheme.error)
-                                                }
-                                            }
+                                            OutlinedTextField(
+                                                value = m.title,
+                                                onValueChange = { str ->
+                                                    movies = movies.toMutableList().also { list ->
+                                                        list[index] = m.copy(title = str)
+                                                    }
+                                                },
+                                                label = { Text("Название фильма / спешла") },
+                                                placeholder = { Text("Фильм ${m.movieNumber}") },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                singleLine = true
+                                            )
+
+                                            OutlinedTextField(
+                                                value = "${m.durationMinutes}",
+                                                onValueChange = { str ->
+                                                    val mins = str.filter { it.isDigit() }.toIntOrNull() ?: 0
+                                                    movies = movies.toMutableList().also { list ->
+                                                        list[index] = m.copy(durationMinutes = mins)
+                                                    }
+                                                },
+                                                label = { Text("Продолжительность фильма (мин)") },
+                                                placeholder = { Text("110") },
+                                                modifier = Modifier.fillMaxWidth(),
+                                                singleLine = true
+                                            )
                                         }
                                     }
                                 }

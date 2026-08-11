@@ -48,17 +48,39 @@ data class BookTitle(
     val updatedAt: Long = System.currentTimeMillis()
 ) {
     val effectiveWords: Long
-        get() = if (hasDetailedVolumes && format != TitleFormat.WEB_NOVEL) {
-            detailedVolumes.sumOf { it.wordCount }
+        get() = if (hasDetailedVolumes && format != TitleFormat.WEB_NOVEL && detailedVolumes.isNotEmpty()) {
+            val readVols = detailedVolumes.filter { it.isRead }
+            if (readVols.isNotEmpty()) {
+                readVols.sumOf { it.wordCount }
+            } else if (volumes > 0) {
+                detailedVolumes.take(volumes).sumOf { it.wordCount }
+            } else {
+                detailedVolumes.sumOf { it.wordCount }
+            }
         } else {
             words
         }
 
+    val effectiveTotalWords: Long
+        get() = if (hasDetailedVolumes && format != TitleFormat.WEB_NOVEL && detailedVolumes.isNotEmpty()) {
+            detailedVolumes.sumOf { it.wordCount }
+        } else {
+            totalWords
+        }
+
     val effectiveVolumes: Int
-        get() = if (hasDetailedVolumes) {
-            detailedVolumes.size
+        get() = if (hasDetailedVolumes && detailedVolumes.isNotEmpty()) {
+            val readCount = detailedVolumes.count { it.isRead }
+            if (readCount > 0) readCount else volumes
         } else {
             volumes
+        }
+
+    val effectiveTotalVolumes: Int
+        get() = if (hasDetailedVolumes && detailedVolumes.isNotEmpty()) {
+            maxOf(totalVolumes, detailedVolumes.size)
+        } else {
+            totalVolumes
         }
 
     val progressFraction: Float
@@ -67,11 +89,11 @@ data class BookTitle(
                 format == TitleFormat.VISUAL_NOVEL && totalEndings > 0 -> {
                     (endings.toFloat() / totalEndings.toFloat()).coerceIn(0f, 1f)
                 }
-                totalWords > 0 -> {
-                    (effectiveWords.toFloat() / totalWords.toFloat()).coerceIn(0f, 1f)
+                effectiveTotalWords > 0 -> {
+                    (effectiveWords.toFloat() / effectiveTotalWords.toFloat()).coerceIn(0f, 1f)
                 }
-                totalVolumes > 0 -> {
-                    (effectiveVolumes.toFloat() / totalVolumes.toFloat()).coerceIn(0f, 1f)
+                effectiveTotalVolumes > 0 -> {
+                    (effectiveVolumes.toFloat() / effectiveTotalVolumes.toFloat()).coerceIn(0f, 1f)
                 }
                 (format == TitleFormat.WEB_NOVEL || format == TitleFormat.HYBRID) && totalChapters > 0 -> {
                     (chapters.toFloat() / totalChapters.toFloat()).coerceIn(0f, 1f)
@@ -97,15 +119,15 @@ data class BookTitle(
                     }
                 }
                 TitleFormat.HYBRID -> {
-                    val volStr = if (isOngoing) "$effectiveVolumes/? т." else if (totalVolumes > 0) "$effectiveVolumes/$totalVolumes т." else "$effectiveVolumes т."
+                    val volStr = if (isOngoing) "$effectiveVolumes/? т." else if (effectiveTotalVolumes > 0) "$effectiveVolumes/$effectiveTotalVolumes т." else "$effectiveVolumes т."
                     val chStr = if (totalChapters > 0) "$chapters/$totalChapters гл." else if (chapters > 0) "$chapters гл." else ""
                     if (chStr.isNotEmpty()) "$volStr, $chStr" else volStr
                 }
                 TitleFormat.SERIES, TitleFormat.NOVEL, TitleFormat.SINGLE -> {
                     if (isOngoing) {
                         "$effectiveVolumes/? т."
-                    } else if (totalVolumes > 0) {
-                        "$effectiveVolumes/$totalVolumes т."
+                    } else if (effectiveTotalVolumes > 0) {
+                        "$effectiveVolumes/$effectiveTotalVolumes т."
                     } else {
                         "$effectiveVolumes т."
                     }

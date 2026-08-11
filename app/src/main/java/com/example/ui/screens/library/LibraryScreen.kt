@@ -283,8 +283,9 @@ fun LibraryScreen(
                     )
                 } else {
                     if (isGrid) {
+                        val gridCells = if (settings.tabletLayoutEnabled) GridCells.Adaptive(minSize = 160.dp) else GridCells.Fixed(2)
                         LazyVerticalGrid(
-                            columns = GridCells.Fixed(2),
+                            columns = gridCells,
                             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -311,17 +312,21 @@ fun LibraryScreen(
                             modifier = Modifier.fillMaxSize()
                         ) {
                             items(books, key = { it.id }) { book ->
-                                BookListCard(
-                                    book = book,
-                                    ratingScale = settings.ratingScale,
-                                    ratingEnabled = settings.ratingEnabled,
-                                    showCovers = settings.showCoversInLibrary,
-                                    coverlessStyle = settings.coverlessCardStyle,
-                                    shortenNumbers = settings.shortenNumbers,
-                                    alignFormatWithTitle = settings.alignFormatWithTitle,
-                                    onClick = { viewModel.openBookDetails(book.id) },
-                                    onLongClick = { bookToDelete = book }
-                                )
+                                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                    Box(modifier = Modifier.fillMaxWidth().widthIn(max = 800.dp)) {
+                                        BookListCard(
+                                            book = book,
+                                            ratingScale = settings.ratingScale,
+                                            ratingEnabled = settings.ratingEnabled,
+                                            showCovers = settings.showCoversInLibrary,
+                                            coverlessStyle = settings.coverlessCardStyle,
+                                            shortenNumbers = settings.shortenNumbers,
+                                            alignFormatWithTitle = settings.alignFormatWithTitle,
+                                            onClick = { viewModel.openBookDetails(book.id) },
+                                            onLongClick = { bookToDelete = book }
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -335,8 +340,9 @@ fun LibraryScreen(
                     )
                 } else {
                     if (isGrid) {
+                        val gridCells = if (settings.tabletLayoutEnabled) GridCells.Adaptive(minSize = 160.dp) else GridCells.Fixed(2)
                         LazyVerticalGrid(
-                            columns = GridCells.Fixed(2),
+                            columns = gridCells,
                             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -362,16 +368,20 @@ fun LibraryScreen(
                             modifier = Modifier.fillMaxSize()
                         ) {
                             items(adaptations, key = { it.id }) { adaptation ->
-                                AdaptationListCard(
-                                    adaptation = adaptation,
-                                    ratingScale = settings.ratingScale,
-                                    ratingEnabled = settings.ratingEnabled,
-                                    showCovers = settings.showCoversInLibrary,
-                                    coverlessStyle = settings.coverlessCardStyle,
-                                    alignFormatWithTitle = settings.alignFormatWithTitle,
-                                    onClick = { viewModel.openAdaptationDetails(adaptation.id) },
-                                    onLongClick = { adaptationToDelete = adaptation }
-                                )
+                                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                    Box(modifier = Modifier.fillMaxWidth().widthIn(max = 800.dp)) {
+                                        AdaptationListCard(
+                                            adaptation = adaptation,
+                                            ratingScale = settings.ratingScale,
+                                            ratingEnabled = settings.ratingEnabled,
+                                            showCovers = settings.showCoversInLibrary,
+                                            coverlessStyle = settings.coverlessCardStyle,
+                                            alignFormatWithTitle = settings.alignFormatWithTitle,
+                                            onClick = { viewModel.openAdaptationDetails(adaptation.id) },
+                                            onLongClick = { adaptationToDelete = adaptation }
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

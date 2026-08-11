@@ -41,6 +41,9 @@ class Converters {
             val obj = JSONObject()
             obj.put("volumeNumber", it.volumeNumber)
             obj.put("wordCount", it.wordCount)
+            obj.put("chaptersCount", it.chaptersCount)
+            obj.put("isRead", it.isRead)
+            obj.put("name", it.name)
             array.put(obj)
         }
         return array.toString()
@@ -57,7 +60,10 @@ class Converters {
                 list.add(
                     VolumeEntry(
                         volumeNumber = obj.optInt("volumeNumber", i + 1),
-                        wordCount = obj.optLong("wordCount", 0L)
+                        wordCount = obj.optLong("wordCount", 0L),
+                        chaptersCount = obj.optInt("chaptersCount", 0),
+                        isRead = obj.optBoolean("isRead", false),
+                        name = obj.optString("name", "")
                     )
                 )
             }

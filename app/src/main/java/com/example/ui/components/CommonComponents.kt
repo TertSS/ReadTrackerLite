@@ -39,6 +39,94 @@ import com.example.ui.theme.*
 import java.util.Locale
 
 @Composable
+fun ReadTrackerNavigationRail(
+    currentTab: String,
+    onTabSelected: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxHeight()
+            .width(88.dp)
+            .testTag("tablet_nav_rail"),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        tonalElevation = 0.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxHeight()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(vertical = 16.dp, horizontal = 6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // App icon header
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AutoStories,
+                    contentDescription = "ReadTracker",
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            val tabs = listOf(
+                Triple("library", "Библиотека", Icons.Default.AutoStories),
+                Triple("reviews", "Отзывы", Icons.Default.RateReview),
+                Triple("stats", "Статистика", Icons.Default.Leaderboard),
+                Triple("tier_list", "Тир-лист", Icons.Default.FormatListNumbered),
+                Triple("settings", "Настройки", Icons.Default.Settings)
+            )
+
+            tabs.forEach { (id, label, icon) ->
+                val selected = currentTab == id
+                val iconColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                val containerColor = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else Color.Transparent
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(containerColor)
+                        .clickable { onTabSelected(id) }
+                        .padding(vertical = 10.dp, horizontal = 4.dp)
+                        .testTag("nav_tab_$id"),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = label,
+                        tint = iconColor,
+                        modifier = Modifier.size(26.dp)
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                        color = iconColor,
+                        maxLines = 1,
+                        fontSize = 11.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun ReadTrackerBottomNav(
     currentTab: String,
     onTabSelected: (String) -> Unit,

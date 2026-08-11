@@ -274,6 +274,13 @@ fun SettingsScreen(
                         checked = settings.roundedInputFields,
                         onCheckedChange = { viewModel.updateAppSettings(settings.copy(roundedInputFields = it)) }
                     )
+
+                    SettingToggleRow(
+                        title = "Адаптация под планшеты",
+                        subtitle = "Оптимизированная верстка для планшетов и больших экранов (боковая панель навигации и адаптивная сетка)",
+                        checked = settings.tabletLayoutEnabled,
+                        onCheckedChange = { viewModel.updateAppSettings(settings.copy(tabletLayoutEnabled = it)) }
+                    )
                 }
             }
 
