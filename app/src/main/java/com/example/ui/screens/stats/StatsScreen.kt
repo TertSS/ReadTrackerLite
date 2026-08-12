@@ -563,39 +563,44 @@ fun StatsScreen(
                                 modifier = Modifier.weight(1f, fill = false)
                             ) {
                                 Surface(
-                                    shape = RoundedCornerShape(10.dp),
+                                    shape = RoundedCornerShape(8.dp),
                                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                                    modifier = Modifier.size(36.dp)
+                                    modifier = Modifier.size(32.dp)
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
                                         Icon(
                                             imageVector = if (chartType == "RADAR") Icons.Default.Hub else Icons.Default.PieChart,
                                             contentDescription = null,
                                             tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(20.dp)
+                                            modifier = Modifier.size(18.dp)
                                         )
                                     }
                                 }
-                                Spacer(modifier = Modifier.width(10.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = "Распределение по жанрам",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
 
+                            Spacer(modifier = Modifier.width(6.dp))
+
                             Surface(
-                                shape = RoundedCornerShape(20.dp),
+                                shape = RoundedCornerShape(12.dp),
                                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f))
                             ) {
                                 Text(
                                     text = "${genreCounts.size} ${PluralRu.form(genreCounts.size.toLong(), "жанр", "жанра", "жанров")}",
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                    maxLines = 1
                                 )
                             }
                         }
@@ -877,99 +882,228 @@ fun GenreDonutChart(
     val totalTags = remember(genreCounts) { genreCounts.sumOf { it.second }.coerceAtLeast(1) }
     
     val palette = listOf(
-        Color(0xFF3B82F6), // Electric Blue
-        Color(0xFF10B981), // Emerald Green
-        Color(0xFF8B5CF6), // Vivid Violet
-        Color(0xFFF59E0B), // Warm Amber
-        Color(0xFFEC4899), // Rose Pink
-        Color(0xFF06B6D4), // Cyan Teal
-        Color(0xFFF97316), // Sunset Orange
+        Color(0xFF3B82F6), // Blue
+        Color(0xFF10B981), // Emerald
+        Color(0xFF8B5CF6), // Purple
+        Color(0xFFF59E0B), // Amber
+        Color(0xFFEC4899), // Pink
+        Color(0xFF06B6D4), // Cyan
+        Color(0xFFF97316), // Orange
         Color(0xFF6366F1)  // Indigo
     )
 
+    val topLimit = 5
+    val topGenres = remember(genreCounts) { genreCounts.take(topLimit) }
+    val otherGenres = remember(genreCounts) { genreCounts.drop(topLimit) }
+    val othersCount = remember(otherGenres) { otherGenres.sumOf { it.second } }
+    val hasOthers = othersCount > 0
+
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // Upper section: Center Donut with ambient glow & percentage segments
-        Box(
+        // Main Row: Left Donut, Right Genre Legend List
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            contentAlignment = Alignment.Center
+                .padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            val strokeWidth = 22.dp
-            val donutSize = 160.dp
+            // Left: Donut with Total Count in Center
+            Box(
+                modifier = Modifier
+                    .size(126.dp)
+                    .padding(2.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                val strokeWidth = 14.dp
 
-            Canvas(modifier = Modifier.size(donutSize)) {
-                val canvasSize = size.minDimension
-                val arcSize = Size(canvasSize - strokeWidth.toPx(), canvasSize - strokeWidth.toPx())
-                val topLeft = Offset(strokeWidth.toPx() / 2f, strokeWidth.toPx() / 2f)
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val canvasSize = size.minDimension
+                    val arcSize = Size(canvasSize - strokeWidth.toPx(), canvasSize - strokeWidth.toPx())
+                    val topLeft = Offset(strokeWidth.toPx() / 2f, strokeWidth.toPx() / 2f)
 
-                // 1. Background track ring
-                drawArc(
-                    color = Color.White.copy(alpha = 0.06f),
-                    startAngle = 0f,
-                    sweepAngle = 360f,
-                    useCenter = false,
-                    topLeft = topLeft,
-                    size = arcSize,
-                    style = Stroke(width = strokeWidth.toPx(), cap = StrokeCap.Round)
-                )
-
-                // 2. Arcs for top genres with micro-gap separation
-                var currentAngle = -90f
-                val topGenres = genreCounts.take(6)
-                val topSum = topGenres.sumOf { it.second }
-                val hasOthers = genreCounts.size > 6
-                val otherCount = if (hasOthers) totalTags - topSum else 0
-
-                val slices = buildList {
-                    topGenres.forEachIndexed { i, pair ->
-                        add(Triple(pair.first, pair.second, palette[i % palette.size]))
-                    }
-                    if (otherCount > 0) {
-                        add(Triple("Другие", otherCount, Color(0xFF64748B)))
-                    }
-                }
-
-                val gapAngle = if (slices.size > 1) 2.5f else 0f
-
-                slices.forEach { (_, count, color) ->
-                    val rawSweep = (count.toFloat() / totalTags) * 360f
-                    val sweep = (rawSweep - gapAngle).coerceAtLeast(1f)
-
+                    // 1. Subtle background track ring
                     drawArc(
-                        color = color,
-                        startAngle = currentAngle + (gapAngle / 2f),
-                        sweepAngle = sweep,
+                        color = Color.White.copy(alpha = 0.07f),
+                        startAngle = 0f,
+                        sweepAngle = 360f,
                         useCenter = false,
                         topLeft = topLeft,
                         size = arcSize,
                         style = Stroke(width = strokeWidth.toPx(), cap = StrokeCap.Round)
                     )
-                    currentAngle += rawSweep
+
+                    // 2. Arcs for top genres with micro gap separation
+                    var currentAngle = -90f
+                    val slices = buildList {
+                        topGenres.forEachIndexed { i, pair ->
+                            add(Triple(pair.first, pair.second, palette[i % palette.size]))
+                        }
+                        if (hasOthers) {
+                            add(Triple("Другие", othersCount, Color(0xFF64748B)))
+                        }
+                    }
+
+                    val gapAngle = if (slices.size > 1) 3f else 0f
+
+                    slices.forEach { (_, count, color) ->
+                        val rawSweep = (count.toFloat() / totalTags) * 360f
+                        val sweep = (rawSweep - gapAngle).coerceAtLeast(1.5f)
+
+                        drawArc(
+                            color = color,
+                            startAngle = currentAngle + (gapAngle / 2f),
+                            sweepAngle = sweep,
+                            useCenter = false,
+                            topLeft = topLeft,
+                            size = arcSize,
+                            style = Stroke(width = strokeWidth.toPx(), cap = StrokeCap.Round)
+                        )
+                        currentAngle += rawSweep
+                    }
+                }
+
+                // Center Typography
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "$totalTags",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "всего",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
 
-            // Central Typography with layered styling
+            // Right: Genre List
             Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Text(
-                    text = "$totalTags",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Black,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "ОТМЕТОК",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 1.2.sp,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                topGenres.forEachIndexed { index, (genre, count) ->
+                    val color = palette[index % palette.size]
+                    val percent = ((count.toFloat() / totalTags) * 100).toInt().coerceAtLeast(1)
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f, fill = false)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(color)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = genre,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(6.dp))
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            if (showCounts) {
+                                Text(
+                                    text = "$count",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = color.copy(alpha = 0.14f)
+                            ) {
+                                Text(
+                                    text = "$percent%",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = color,
+                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (hasOthers) {
+                    val othersPercent = ((othersCount.toFloat() / totalTags) * 100).toInt()
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f, fill = false)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF64748B))
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Другие (${otherGenres.size})",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(6.dp))
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            if (showCounts) {
+                                Text(
+                                    text = "$othersCount",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = Color(0xFF64748B).copy(alpha = 0.14f)
+                            ) {
+                                Text(
+                                    text = "$othersPercent%",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF64748B),
+                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -982,7 +1116,6 @@ fun GenreDonutChart(
             color = MaterialTheme.colorScheme.surfaceContainerHighest
         ) {
             Row(modifier = Modifier.fillMaxSize()) {
-                val topGenres = genreCounts.take(6)
                 topGenres.forEachIndexed { i, (_, count) ->
                     val weight = count.toFloat() / totalTags
                     Box(
@@ -992,9 +1125,8 @@ fun GenreDonutChart(
                             .background(palette[i % palette.size])
                     )
                 }
-                if (genreCounts.size > 6) {
-                    val otherSum = genreCounts.drop(6).sumOf { it.second }
-                    val otherWeight = otherSum.toFloat() / totalTags
+                if (hasOthers) {
+                    val otherWeight = othersCount.toFloat() / totalTags
                     Box(
                         modifier = Modifier
                             .fillMaxHeight()
@@ -1004,130 +1136,9 @@ fun GenreDonutChart(
                 }
             }
         }
-
-        // Detailed Ranked Genre Cards
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            val top5 = genreCounts.take(5)
-            top5.forEachIndexed { index, (genre, count) ->
-                val color = palette[index % palette.size]
-                val percent = ((count.toFloat() / totalTags) * 100).toInt()
-                val fraction = count.toFloat() / totalTags
-
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainer,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.weight(1f, fill = false)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(10.dp)
-                                        .clip(CircleShape)
-                                        .background(color)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = genre,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                if (showCounts) {
-                                    Text(
-                                        text = "$count ${PluralRu.form(count.toLong(), "книга", "книги", "книг")}",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                Surface(
-                                    shape = RoundedCornerShape(6.dp),
-                                    color = color.copy(alpha = 0.15f)
-                                ) {
-                                    Text(
-                                        text = "$percent%",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        color = color,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                    )
-                                }
-                            }
-                        }
-
-                        // Mini progress bar under each item
-                        LinearProgressIndicator(
-                            progress = { fraction },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(4.dp)
-                                .clip(CircleShape),
-                            color = color,
-                            trackColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f)
-                        )
-                    }
-                }
-            }
-
-            if (genreCounts.size > 5) {
-                val othersCount = genreCounts.drop(5).sumOf { it.second }
-                val othersPercent = ((othersCount.toFloat() / totalTags) * 100).toInt()
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerLow
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Ещё ${genreCounts.size - 5} других жанров",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = if (showCounts) "$othersCount отм. ($othersPercent%)" else "$othersPercent%",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-        }
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun GenreRadarChart(
     genreCounts: List<Pair<String, Int>>,
@@ -1154,19 +1165,19 @@ fun GenreRadarChart(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (displayGenres.size < 3) {
-            // Minimalist progress rows for 1 or 2 genres
+            // Elegant linear progress rows for 1 or 2 genres
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                displayGenres.forEach { (genre, count) ->
+                displayGenres.forEachIndexed { _, (genre, count) ->
                     val percent = ((count.toFloat() / totalTags) * 100).toInt()
                     val progress = (count.toFloat() / maxCount).coerceIn(0f, 1f)
 
                     Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerLow,
-                        border = BorderStroke(1.dp, outlineVariantColor.copy(alpha = 0.25f))
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainer,
+                        border = BorderStroke(1.dp, outlineVariantColor.copy(alpha = 0.2f))
                     ) {
                         Column(
                             modifier = Modifier
@@ -1182,7 +1193,7 @@ fun GenreRadarChart(
                                 Text(
                                     text = genre,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.SemiBold,
+                                    fontWeight = FontWeight.Bold,
                                     color = onSurfaceColor
                                 )
                                 Text(
@@ -1196,7 +1207,7 @@ fun GenreRadarChart(
                                 progress = { progress },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(4.dp)
+                                    .height(5.dp)
                                     .clip(CircleShape),
                                 color = primaryColor,
                                 trackColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f)
@@ -1206,24 +1217,24 @@ fun GenreRadarChart(
                 }
             }
         } else {
-            // Sleek, Minimalist Radar Chart
+            // High-fidelity, Modern Radial Spider Radar Chart
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(250.dp),
+                    .height(230.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val n = displayGenres.size
                     val center = Offset(size.width / 2f, size.height / 2f)
-                    val maxRadius = (min(size.width, size.height) / 2f) - 34.dp.toPx()
+                    val maxRadius = (min(size.width, size.height) / 2f) - 36.dp.toPx()
                     if (maxRadius <= 0f) return@Canvas
 
                     val angleStep = (2 * PI / n).toFloat()
                     val startAngle = (-PI / 2).toFloat() // 12 o'clock
 
-                    // 1. Minimal concentric polygon grid lines (3 levels)
-                    val levels = 3
+                    // 1. Concentric spider-web levels (4 levels: 25%, 50%, 75%, 100%)
+                    val levels = 4
                     for (level in 1..levels) {
                         val levelRadius = maxRadius * (level.toFloat() / levels)
                         val gridPath = Path()
@@ -1237,40 +1248,40 @@ fun GenreRadarChart(
 
                         drawPath(
                             path = gridPath,
-                            color = outlineVariantColor.copy(alpha = if (level == levels) 0.35f else 0.18f),
+                            color = outlineVariantColor.copy(alpha = if (level == levels) 0.4f else 0.18f),
                             style = Stroke(
-                                width = if (level == levels) 1.dp.toPx() else 0.75.dp.toPx()
+                                width = if (level == levels) 1.2.dp.toPx() else 0.8.dp.toPx()
                             )
                         )
                     }
 
-                    // 2. Subtle radial spokes from center to outer vertices
+                    // 2. Radial spokes from center to outer vertices
                     for (i in 0 until n) {
                         val angle = startAngle + i * angleStep
                         val endX = center.x + maxRadius * cos(angle)
                         val endY = center.y + maxRadius * sin(angle)
                         drawLine(
-                            color = outlineVariantColor.copy(alpha = 0.2f),
+                            color = outlineVariantColor.copy(alpha = 0.22f),
                             start = center,
                             end = Offset(endX, endY),
-                            strokeWidth = 0.75.dp.toPx()
+                            strokeWidth = 0.8.dp.toPx()
                         )
                     }
 
-                    // Center subtle origin point
+                    // Center subtle anchor point
                     drawCircle(
-                        color = outlineVariantColor.copy(alpha = 0.5f),
-                        radius = 2.dp.toPx(),
+                        color = primaryColor.copy(alpha = 0.5f),
+                        radius = 2.5.dp.toPx(),
                         center = center
                     )
 
-                    // 3. Data Radar Polygon (Minimalist Shape & Stroke)
+                    // 3. Data Radar Polygon (Filled Shape + Stroke)
                     val dataPath = Path()
                     val points = mutableListOf<Offset>()
 
                     for (i in 0 until n) {
                         val (_, count) = displayGenres[i]
-                        val fraction = (count.toFloat() / maxCount).coerceIn(0.18f, 1f)
+                        val fraction = (count.toFloat() / maxCount).coerceIn(0.15f, 1f)
                         val r = maxRadius * fraction
                         val angle = startAngle + i * angleStep
                         val pt = Offset(center.x + r * cos(angle), center.y + r * sin(angle))
@@ -1279,13 +1290,13 @@ fun GenreRadarChart(
                     }
                     dataPath.close()
 
-                    // Minimalist translucent fill
+                    // Gradient filled polygon
                     drawPath(
                         path = dataPath,
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                primaryColor.copy(alpha = 0.22f),
-                                primaryColor.copy(alpha = 0.08f)
+                                primaryColor.copy(alpha = 0.35f),
+                                primaryColor.copy(alpha = 0.12f)
                             ),
                             center = center,
                             radius = maxRadius
@@ -1293,48 +1304,47 @@ fun GenreRadarChart(
                         style = Fill
                     )
 
-                    // Crisp minimal perimeter stroke
+                    // Outer stroke
                     drawPath(
                         path = dataPath,
                         color = primaryColor,
                         style = Stroke(
-                            width = 1.8.dp.toPx(),
+                            width = 2.dp.toPx(),
                             cap = StrokeCap.Round,
                             join = StrokeJoin.Round
                         )
                     )
 
-                    // Minimalist vertex marker dots
+                    // Vertex marker dots
                     points.forEach { pt ->
-                        // White/surface subtle border
                         drawCircle(
                             color = surfaceColor,
                             radius = 4.5.dp.toPx(),
                             center = pt
                         )
-                        // Core dot
                         drawCircle(
                             color = primaryColor,
-                            radius = 3.dp.toPx(),
+                            radius = 2.8.dp.toPx(),
                             center = pt
                         )
                     }
 
-                    // 4. Outer Minimalist Vertex Text Labels
+                    // 4. Vertex Labels (Positioned cleanly outside the chart)
                     for (i in 0 until n) {
                         val (genreName, count) = displayGenres[i]
+                        val percent = ((count.toFloat() / totalTags) * 100).toInt()
                         val angle = startAngle + i * angleStep
-                        val labelDistance = maxRadius + 14.dp.toPx()
+                        val labelDistance = maxRadius + 15.dp.toPx()
                         val anchorX = center.x + labelDistance * cos(angle)
                         val anchorY = center.y + labelDistance * sin(angle)
 
-                        val truncatedName = if (genreName.length > 11) genreName.take(10) + "…" else genreName
-                        val labelText = if (showCounts) "$truncatedName ($count)" else truncatedName
+                        val truncatedName = if (genreName.length > 10) genreName.take(9) + "…" else genreName
+                        val labelText = if (showCounts) "$truncatedName ($count)" else "$truncatedName ($percent%)"
 
                         val textLayout = textMeasurer.measure(
                             text = labelText,
                             style = TextStyle(
-                                fontSize = 10.5.sp,
+                                fontSize = 10.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = onSurfaceColor
                             )
@@ -1347,27 +1357,19 @@ fun GenreRadarChart(
                         val sinA = sin(angle)
 
                         val posX = when {
-                            cosA > 0.25f -> anchorX
-                            cosA < -0.25f -> anchorX - tw
+                            cosA > 0.2f -> anchorX
+                            cosA < -0.2f -> anchorX - tw
                             else -> anchorX - tw / 2f
                         }
 
                         val posY = when {
-                            sinA > 0.25f -> anchorY
-                            sinA < -0.25f -> anchorY - th
+                            sinA > 0.2f -> anchorY
+                            sinA < -0.2f -> anchorY - th
                             else -> anchorY - th / 2f
                         }
 
                         val clampedX = posX.coerceIn(4.dp.toPx(), size.width - tw - 4.dp.toPx())
                         val clampedY = posY.coerceIn(2.dp.toPx(), size.height - th - 2.dp.toPx())
-
-                        // Subtle transparent backdrop for legibility
-                        drawRoundRect(
-                            color = surfaceColor.copy(alpha = 0.75f),
-                            topLeft = Offset(clampedX - 3.dp.toPx(), clampedY - 1.5.dp.toPx()),
-                            size = Size(tw + 6.dp.toPx(), th + 3.dp.toPx()),
-                            cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
-                        )
 
                         drawText(
                             textLayoutResult = textLayout,
@@ -1378,60 +1380,128 @@ fun GenreRadarChart(
             }
         }
 
-        // Minimalist summary chips below the Radar chart
-        FlowRow(
+        // Clean Ranked Cards below the Radar chart (list with progress)
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            displayGenres.forEach { (genre, count) ->
+            displayGenres.forEachIndexed { index, (genre, count) ->
                 val percent = ((count.toFloat() / totalTags) * 100).toInt()
+                val fraction = count.toFloat() / totalTags
+
                 Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerLow,
-                    border = BorderStroke(1.dp, outlineVariantColor.copy(alpha = 0.25f))
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    border = BorderStroke(1.dp, outlineVariantColor.copy(alpha = 0.18f))
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 7.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Box(
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.weight(1f, fill = false)
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = primaryColor.copy(alpha = 0.15f),
+                                    modifier = Modifier.size(18.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text(
+                                            text = "${index + 1}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = primaryColor,
+                                            fontSize = 9.sp
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = genre,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = onSurfaceColor,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                if (showCounts) {
+                                    Text(
+                                        text = "$count ${PluralRu.form(count.toLong(), "книга", "книги", "книг")}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = onSurfaceVariantColor
+                                    )
+                                }
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = primaryColor.copy(alpha = 0.12f)
+                                ) {
+                                    Text(
+                                        text = "$percent%",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = primaryColor,
+                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        LinearProgressIndicator(
+                            progress = { fraction },
                             modifier = Modifier
-                                .size(6.dp)
-                                .clip(CircleShape)
-                                .background(primaryColor)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = genre,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Medium,
-                            color = onSurfaceColor
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = if (showCounts) "$count ($percent%)" else "$percent%",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = onSurfaceVariantColor
+                                .fillMaxWidth()
+                                .height(3.5.dp)
+                                .clip(CircleShape),
+                            color = primaryColor,
+                            trackColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f)
                         )
                     }
                 }
             }
 
-            if (genreCounts.size > 6) {
-                val otherCount = genreCounts.drop(6).sumOf { it.second }
+            if (genreCounts.size > displayGenres.size) {
+                val otherCount = genreCounts.drop(displayGenres.size).sumOf { it.second }
                 val otherPercent = ((otherCount.toFloat() / totalTags) * 100).toInt()
                 Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerLowest,
-                    border = BorderStroke(1.dp, outlineVariantColor.copy(alpha = 0.15f))
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerLow
                 ) {
-                    Text(
-                        text = if (showCounts) "+ ещё ${genreCounts.size - 6} ($otherCount • $otherPercent%)" else "+ ещё ${genreCounts.size - 6} ($otherPercent%)",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = onSurfaceVariantColor,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Ещё ${genreCounts.size - displayGenres.size} других жанров",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = onSurfaceVariantColor
+                        )
+                        Text(
+                            text = if (showCounts) "$otherCount отм. ($otherPercent%)" else "$otherPercent%",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = onSurfaceVariantColor
+                        )
+                    }
                 }
             }
         }

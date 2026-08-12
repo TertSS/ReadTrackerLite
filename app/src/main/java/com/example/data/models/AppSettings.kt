@@ -19,12 +19,15 @@ data class AppSettings(
     val searchFilterEnabled: Boolean = true,
     val librarySearchMode: String = "SEARCH_AND_FILTER", // "SEARCH_ONLY", "SEARCH_AND_FILTER"
     val showLibraryModeSwitcher: Boolean = false,
+    val showViewModeSwitcher: Boolean = true,
     val totalWordsEnabled: Boolean = true,
     val startAfterAdaptationEnabled: Boolean = true,
     val shortenNumbers: Boolean = false,
     val sortByStatus: Boolean = true,
     val showCoversInLibrary: Boolean = true,
     val showStatusFiltersInLibrary: Boolean = false,
+    val rememberLastStatusFilter: Boolean = false,
+    val lastSelectedStatus: String? = null,
     val libraryStatusBarStyle: String = "PILLS", // PILLS, SEGMENTED, CARDS_COUNT
     val showStatusBarItemCounts: Boolean = true,
     val coverlessCardStyle: String = "CLASSIC", // CLASSIC, MINIMAL, GRADIENT, COMPACT

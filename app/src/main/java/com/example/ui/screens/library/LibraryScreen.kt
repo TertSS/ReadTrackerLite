@@ -101,24 +101,26 @@ fun LibraryScreen(
                         }
                     }
 
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        IconButton(
-                            onClick = { viewModel.isGridView.value = !isGrid },
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surfaceContainerLow)
-                                .testTag("view_mode_toggle_btn")
+                    if (settings.showViewModeSwitcher) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Icon(
-                                imageVector = if (isGrid) Icons.AutoMirrored.Filled.ViewList else Icons.Default.GridView,
-                                contentDescription = "Переключить вид",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
-                            )
+                            IconButton(
+                                onClick = { viewModel.isGridView.value = !isGrid },
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                                    .testTag("view_mode_toggle_btn")
+                            ) {
+                                Icon(
+                                    imageVector = if (isGrid) Icons.AutoMirrored.Filled.ViewList else Icons.Default.GridView,
+                                    contentDescription = "Переключить вид",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -242,7 +244,7 @@ fun LibraryScreen(
                     showCounts = settings.showStatusBarItemCounts,
                     allBooks = allBooks,
                     allAdaptations = allAdaptations,
-                    onSelectStatus = { viewModel.selectedStatusFilter.value = it }
+                    onSelectStatus = { viewModel.setStatusFilter(it) }
                 )
             }
 

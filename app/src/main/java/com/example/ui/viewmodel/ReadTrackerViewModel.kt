@@ -75,6 +75,9 @@ class ReadTrackerViewModel(
                 if (settings.rememberLastTab && settings.lastActiveTab.isNotBlank()) {
                     currentTab.value = settings.lastActiveTab
                 }
+                if (settings.rememberLastStatusFilter && !settings.lastSelectedStatus.isNullOrBlank()) {
+                    selectedStatusFilter.value = runCatching { TitleStatus.valueOf(settings.lastSelectedStatus) }.getOrNull()
+                }
                 libraryMode.value = settings.libraryMode
             }
         }
@@ -185,6 +188,13 @@ class ReadTrackerViewModel(
         editingAdaptation.value = null
         if (appSettings.value.rememberLastTab) {
             updateAppSettings(appSettings.value.copy(lastActiveTab = tab))
+        }
+    }
+
+    fun setStatusFilter(status: TitleStatus?) {
+        selectedStatusFilter.value = status
+        if (appSettings.value.rememberLastStatusFilter) {
+            updateAppSettings(appSettings.value.copy(lastSelectedStatus = status?.name))
         }
     }
 

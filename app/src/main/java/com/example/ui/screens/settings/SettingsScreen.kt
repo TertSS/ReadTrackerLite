@@ -274,6 +274,20 @@ fun SettingsScreen(
                     )
 
                     SettingToggleRow(
+                        title = "Запоминать выбранный статус в библиотеке",
+                        subtitle = "При повторном открытии приложения оставаться на выбранном статусе (например, «Читаю»)",
+                        checked = settings.rememberLastStatusFilter,
+                        onCheckedChange = { isEnabled ->
+                            viewModel.updateAppSettings(
+                                settings.copy(
+                                    rememberLastStatusFilter = isEnabled,
+                                    lastSelectedStatus = if (isEnabled) viewModel.selectedStatusFilter.value?.name else null
+                                )
+                            )
+                        }
+                    )
+
+                    SettingToggleRow(
                         title = "Единый стиль шапок и заголовков",
                         subtitle = "Одинаковое оформление и размер заголовков на всех вкладках приложения",
                         checked = settings.uniformHeadersEnabled,
@@ -341,6 +355,13 @@ fun SettingsScreen(
                         subtitle = "Отображать переключатель между разделами книг и экранизаций в шапке библиотеки",
                         checked = settings.showLibraryModeSwitcher,
                         onCheckedChange = { viewModel.updateAppSettings(settings.copy(showLibraryModeSwitcher = it)) }
+                    )
+
+                    SettingToggleRow(
+                        title = "Кнопка смены вида карточек",
+                        subtitle = "Отображать кнопку переключения вида «сетка / список» в правом углу шапки библиотеки",
+                        checked = settings.showViewModeSwitcher,
+                        onCheckedChange = { viewModel.updateAppSettings(settings.copy(showViewModeSwitcher = it)) }
                     )
 
                     SettingToggleRow(
