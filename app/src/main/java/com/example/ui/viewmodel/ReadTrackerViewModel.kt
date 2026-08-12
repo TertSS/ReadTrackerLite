@@ -612,6 +612,10 @@ class ReadTrackerViewModel(
         return repository.exportLibrary()
     }
 
+    suspend fun getLibraryExportData(): Pair<BackupHelper.ExportPayload, String> {
+        return repository.getLibraryExportData()
+    }
+
     suspend fun importLibraryJson(jsonString: String, replace: Boolean): BackupHelper.ImportResult {
         return repository.importLibrary(jsonString, replace)
     }

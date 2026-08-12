@@ -35,6 +35,10 @@ object BackupHelper {
             reviews = reviews,
             tierRows = tierRows
         )
+        return exportPayloadToJson(payload)
+    }
+
+    fun exportPayloadToJson(payload: ExportPayload): String {
         val adapter = moshi.adapter(ExportPayload::class.java).indent("  ")
         return adapter.toJson(payload)
     }

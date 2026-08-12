@@ -3,6 +3,7 @@ package com.example.ui.screens.settings
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -25,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,7 +34,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.models.*
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.ReadTrackerViewModel
+import com.example.utils.BackupHelper
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -50,7 +55,10 @@ fun SettingsScreen(
     var showExportDialog by remember { mutableStateOf(false) }
     var showImportDialog by remember { mutableStateOf(false) }
     var showClearDataDialog by remember { mutableStateOf(false) }
+    var exportPayloadData by remember { mutableStateOf<BackupHelper.ExportPayload?>(null) }
     var exportJsonText by remember { mutableStateOf("") }
+    var isExportingLibrary by remember { mutableStateOf(false) }
+    var isExportingSettings by remember { mutableStateOf(false) }
     var importJsonText by remember { mutableStateOf("") }
     var importReplaceMode by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
@@ -68,8 +76,10 @@ fun SettingsScreen(
             coroutineScope.launch {
                 try {
                     val jsonString = viewModel.exportLibraryJson()
-                    context.contentResolver.openOutputStream(uri)?.use { stream ->
-                        stream.write(jsonString.toByteArray(Charsets.UTF_8))
+                    withContext(Dispatchers.IO) {
+                        context.contentResolver.openOutputStream(uri)?.use { stream ->
+                            stream.write(jsonString.toByteArray(Charsets.UTF_8))
+                        }
                     }
                     Toast.makeText(context, "Библиотека успешно экспортирована в файл!", Toast.LENGTH_LONG).show()
                 } catch (e: Exception) {
@@ -85,8 +95,10 @@ fun SettingsScreen(
         if (uri != null) {
             coroutineScope.launch {
                 try {
-                    val jsonString = context.contentResolver.openInputStream(uri)?.use { stream ->
-                        stream.bufferedReader(Charsets.UTF_8).readText()
+                    val jsonString = withContext(Dispatchers.IO) {
+                        context.contentResolver.openInputStream(uri)?.use { stream ->
+                            stream.bufferedReader(Charsets.UTF_8).readText()
+                        }
                     }
                     if (!jsonString.isNullOrBlank()) {
                         importJsonText = jsonString
@@ -106,14 +118,18 @@ fun SettingsScreen(
         contract = ActivityResultContracts.CreateDocument("application/json")
     ) { uri ->
         if (uri != null) {
-            try {
-                val jsonString = viewModel.exportSettingsJson()
-                context.contentResolver.openOutputStream(uri)?.use { stream ->
-                    stream.write(jsonString.toByteArray(Charsets.UTF_8))
+            coroutineScope.launch {
+                try {
+                    val jsonString = viewModel.exportSettingsJson()
+                    withContext(Dispatchers.IO) {
+                        context.contentResolver.openOutputStream(uri)?.use { stream ->
+                            stream.write(jsonString.toByteArray(Charsets.UTF_8))
+                        }
+                    }
+                    Toast.makeText(context, "Настройки успешно экспортированы в файл!", Toast.LENGTH_LONG).show()
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Ошибка сохранения файла настроек: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
                 }
-                Toast.makeText(context, "Настройки успешно экспортированы в файл!", Toast.LENGTH_LONG).show()
-            } catch (e: Exception) {
-                Toast.makeText(context, "Ошибка сохранения файла настроек: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -122,22 +138,26 @@ fun SettingsScreen(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri != null) {
-            try {
-                val jsonString = context.contentResolver.openInputStream(uri)?.use { stream ->
-                    stream.bufferedReader(Charsets.UTF_8).readText()
-                }
-                if (!jsonString.isNullOrBlank()) {
-                    val success = viewModel.importSettingsJson(jsonString)
-                    if (success) {
-                        Toast.makeText(context, "Настройки успешно импортированы!", Toast.LENGTH_LONG).show()
-                    } else {
-                        Toast.makeText(context, "Ошибка импорта: неверный формат файла настроек", Toast.LENGTH_LONG).show()
+            coroutineScope.launch {
+                try {
+                    val jsonString = withContext(Dispatchers.IO) {
+                        context.contentResolver.openInputStream(uri)?.use { stream ->
+                            stream.bufferedReader(Charsets.UTF_8).readText()
+                        }
                     }
-                } else {
-                    Toast.makeText(context, "Выбран пустой файл", Toast.LENGTH_SHORT).show()
+                    if (!jsonString.isNullOrBlank()) {
+                        val success = viewModel.importSettingsJson(jsonString)
+                        if (success) {
+                            Toast.makeText(context, "Настройки успешно импортированы!", Toast.LENGTH_LONG).show()
+                        } else {
+                            Toast.makeText(context, "Некорректный формат файла настроек", Toast.LENGTH_LONG).show()
+                        }
+                    } else {
+                        Toast.makeText(context, "Выбран пустой файл", Toast.LENGTH_SHORT).show()
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Ошибка чтения файла настроек: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
                 }
-            } catch (e: Exception) {
-                Toast.makeText(context, "Ошибка чтения файла настроек: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -973,7 +993,7 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        text = "Экспортируйте и импортируйте библиотеку через выбор файлов .json на вашем устройстве",
+                        text = "Сохраняйте и восстанавливайте библиотеку через файлы .json или прямое копирование",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1005,7 +1025,84 @@ fun SettingsScreen(
                         Text("Выбрать файл JSON библиотеки")
                     }
 
-                    // Secondary text clipboard options for Library
+                    // Quick Clipboard & Share actions
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                coroutineScope.launch {
+                                    if (isExportingLibrary) return@launch
+                                    isExportingLibrary = true
+                                    try {
+                                        val (payload, jsonString) = viewModel.getLibraryExportData()
+                                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                        val clip = ClipData.newPlainText("ReadTracker Backup", jsonString)
+                                        clipboard.setPrimaryClip(clip)
+                                        val sizeKb = (jsonString.toByteArray(Charsets.UTF_8).size) / 1024
+                                        Toast.makeText(
+                                            context,
+                                            "JSON скопирован в буфер! ($sizeKb КБ • ${payload.books.size} книг, ${payload.adaptations.size} экран.)",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "Ошибка копирования: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                                    } finally {
+                                        isExportingLibrary = false
+                                    }
+                                }
+                            },
+                            enabled = !isExportingLibrary,
+                            modifier = Modifier.weight(1f).testTag("export_json_btn"),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        ) {
+                            if (isExportingLibrary) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                            } else {
+                                Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                            }
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Копировать JSON", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    if (isExportingLibrary) return@launch
+                                    isExportingLibrary = true
+                                    try {
+                                        val (_, jsonString) = viewModel.getLibraryExportData()
+                                        val sendIntent = Intent().apply {
+                                            action = Intent.ACTION_SEND
+                                            putExtra(Intent.EXTRA_TEXT, jsonString)
+                                            type = "text/plain"
+                                        }
+                                        val shareIntent = Intent.createChooser(sendIntent, "Отправить JSON библиотеки")
+                                        context.startActivity(shareIntent)
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "Ошибка: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                                    } finally {
+                                        isExportingLibrary = false
+                                    }
+                                }
+                            },
+                            enabled = !isExportingLibrary,
+                            modifier = Modifier.weight(1f).testTag("share_json_btn")
+                        ) {
+                            Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Поделиться", fontSize = 12.sp)
+                        }
+                    }
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -1013,15 +1110,26 @@ fun SettingsScreen(
                         OutlinedButton(
                             onClick = {
                                 coroutineScope.launch {
-                                    exportJsonText = viewModel.exportLibraryJson()
-                                    showExportDialog = true
+                                    if (isExportingLibrary) return@launch
+                                    isExportingLibrary = true
+                                    try {
+                                        val (payload, jsonString) = viewModel.getLibraryExportData()
+                                        exportPayloadData = payload
+                                        exportJsonText = jsonString
+                                        showExportDialog = true
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "Ошибка: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                                    } finally {
+                                        isExportingLibrary = false
+                                    }
                                 }
                             },
-                            modifier = Modifier.weight(1f).testTag("export_json_btn")
+                            enabled = !isExportingLibrary,
+                            modifier = Modifier.weight(1f).testTag("preview_json_btn")
                         ) {
-                            Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.Visibility, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Текст JSON", fontSize = 12.sp)
+                            Text("Просмотр JSON", fontSize = 12.sp)
                         }
 
                         OutlinedButton(
@@ -1066,7 +1174,7 @@ fun SettingsScreen(
                         ) {
                             Icon(Icons.Default.FileDownload, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Экспорт настроек", fontSize = 12.sp)
+                            Text("Экспорт в файл", fontSize = 12.sp)
                         }
 
                         Button(
@@ -1078,7 +1186,7 @@ fun SettingsScreen(
                         ) {
                             Icon(Icons.Default.FileUpload, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Импорт настроек", fontSize = 12.sp)
+                            Text("Импорт из файла", fontSize = 12.sp)
                         }
                     }
 
@@ -1086,16 +1194,27 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        OutlinedButton(
+                        Button(
                             onClick = {
-                                settingsExportJsonText = viewModel.exportSettingsJson()
-                                showSettingsExportDialog = true
+                                try {
+                                    val jsonString = viewModel.exportSettingsJson()
+                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                    val clip = ClipData.newPlainText("ReadTracker Settings", jsonString)
+                                    clipboard.setPrimaryClip(clip)
+                                    Toast.makeText(context, "JSON настроек скопирован в буфер!", Toast.LENGTH_SHORT).show()
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "Ошибка копирования: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                                }
                             },
-                            modifier = Modifier.weight(1f).testTag("export_settings_text_btn")
+                            modifier = Modifier.weight(1f).testTag("export_settings_text_btn"),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
                         ) {
                             Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Текст настроек", fontSize = 12.sp)
+                            Text("Копировать JSON", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
 
                         OutlinedButton(
@@ -1163,46 +1282,173 @@ fun SettingsScreen(
         }
     }
 
-    // Export JSON Dialog
+    // Export JSON Dialog (High Performance, No Freezing)
     if (showExportDialog) {
+        val payload = exportPayloadData
+        val sizeKb = (exportJsonText.toByteArray(Charsets.UTF_8).size) / 1024
+        val previewSnippet = remember(exportJsonText) {
+            exportJsonText.lineSequence().take(35).joinToString("\n")
+        }
+
         AlertDialog(
             onDismissRequest = { showExportDialog = false },
-            title = { Text("Экспорт библиотеки (JSON)") },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Backup,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text("Экспорт библиотеки (JSON)")
+                }
+            },
             text = {
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Text("Скопируйте JSON для резервного сохранения:")
-                    OutlinedTextField(
-                        value = exportJsonText,
-                        onValueChange = {},
-                        readOnly = true,
+                    // Summary stats badges
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = "Содержимое резервной копии:",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("📚 Книги и новеллы:", style = MaterialTheme.typography.bodySmall)
+                                Text("${payload?.books?.size ?: 0}", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("🎬 Экранизации:", style = MaterialTheme.typography.bodySmall)
+                                Text("${payload?.adaptations?.size ?: 0}", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("✍️ Отзывы:", style = MaterialTheme.typography.bodySmall)
+                                Text("${payload?.reviews?.size ?: 0}", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("🏆 Ряды тир-листа:", style = MaterialTheme.typography.bodySmall)
+                                Text("${payload?.tierRows?.size ?: 0}", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
+                            }
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("📦 Общий объём данных:", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
+                                Text("$sizeKb КБ", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.tertiary, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
+
+                    Text(
+                        text = "Фрагмент структуры JSON:",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    // Lightweight Preview Box (NOT an OutlinedTextField, does not freeze UI thread)
+                    Surface(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(200.dp),
-                        textStyle = MaterialTheme.typography.bodySmall
+                            .heightIn(min = 100.dp, max = 180.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(8.dp)
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            Text(
+                                text = "$previewSnippet\n...",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 10.sp,
+                                    lineHeight = 14.sp
+                                ),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = "При копировании или отправке экспортируется полный JSON-файл целиком.",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.outline
                     )
                 }
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        val clip = ClipData.newPlainText("ReadTracker Backup", exportJsonText)
-                        clipboard.setPrimaryClip(clip)
-                        Toast.makeText(context, "Скопировано в буфер обмена", Toast.LENGTH_SHORT).show()
-                        showExportDialog = false
+                        try {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clip = ClipData.newPlainText("ReadTracker Backup", exportJsonText)
+                            clipboard.setPrimaryClip(clip)
+                            Toast.makeText(context, "JSON библиотеки успешно скопирован в буфер!", Toast.LENGTH_SHORT).show()
+                            showExportDialog = false
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "Ошибка копирования: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                        }
                     }
                 ) {
                     Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text("Копировать")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showExportDialog = false }) {
-                    Text("Закрыть")
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    IconButton(
+                        onClick = {
+                            try {
+                                val sendIntent = Intent().apply {
+                                    action = Intent.ACTION_SEND
+                                    putExtra(Intent.EXTRA_TEXT, exportJsonText)
+                                    type = "text/plain"
+                                }
+                                val shareIntent = Intent.createChooser(sendIntent, "Отправить JSON библиотеки")
+                                context.startActivity(shareIntent)
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Ошибка: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    ) {
+                        Icon(Icons.Default.Share, contentDescription = "Поделиться", tint = MaterialTheme.colorScheme.primary)
+                    }
+                    TextButton(onClick = { showExportDialog = false }) {
+                        Text("Закрыть")
+                    }
                 }
             },
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -1212,61 +1458,151 @@ fun SettingsScreen(
 
     // Import JSON Dialog
     if (showImportDialog) {
+        var isImporting by remember { mutableStateOf(false) }
+
         AlertDialog(
-            onDismissRequest = { showImportDialog = false },
-            title = { Text("Импорт библиотеки") },
+            onDismissRequest = { if (!isImporting) showImportDialog = false },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        Icons.Default.FileUpload,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.secondary
+                    )
+                    Text("Импорт библиотеки")
+                }
+            },
             text = {
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Text("Проверьте или вставьте JSON резервной копии:")
+                    Text(
+                        text = "Вставьте сохранённый ранее JSON резервной копии:",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+
+                    // Quick Paste from Clipboard button
+                    FilledTonalButton(
+                        onClick = {
+                            try {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                val clip = clipboard.primaryClip
+                                if (clip != null && clip.itemCount > 0) {
+                                    val pasted = clip.getItemAt(0).text?.toString() ?: ""
+                                    if (pasted.isNotBlank()) {
+                                        importJsonText = pasted
+                                        Toast.makeText(context, "Вставлено из буфера (${pasted.length} симв.)", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast.makeText(context, "Буфер обмена пуст", Toast.LENGTH_SHORT).show()
+                                    }
+                                } else {
+                                    Toast.makeText(context, "Буфер обмена пуст", Toast.LENGTH_SHORT).show()
+                                }
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Ошибка чтения буфера: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.ContentPaste, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Вставить из буфера обмена", fontSize = 12.sp)
+                    }
+
                     OutlinedTextField(
                         value = importJsonText,
                         onValueChange = { importJsonText = it },
                         placeholder = { Text("{\"books\": [...], \"adaptations\": [...]}") },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(180.dp),
-                        textStyle = MaterialTheme.typography.bodySmall
+                            .height(160.dp),
+                        textStyle = MaterialTheme.typography.bodySmall,
+                        trailingIcon = {
+                            if (importJsonText.isNotEmpty()) {
+                                IconButton(onClick = { importJsonText = "" }) {
+                                    Icon(Icons.Default.Clear, contentDescription = "Очистить")
+                                }
+                            }
+                        }
                     )
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    Card(
+                        shape = RoundedCornerShape(10.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
                     ) {
-                        Text("Заменить существующие данные", style = MaterialTheme.typography.bodySmall)
-                        Switch(
-                            checked = importReplaceMode,
-                            onCheckedChange = { importReplaceMode = it }
-                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Заменить существующие данные", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                                Text(
+                                    if (importReplaceMode) "Все текущие книги и отзывы будут перезаписаны" else "Новые книги будут объединены с текущими",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Switch(
+                                checked = importReplaceMode,
+                                onCheckedChange = { importReplaceMode = it }
+                            )
+                        }
                     }
                 }
             },
             confirmButton = {
                 Button(
                     onClick = {
+                        if (importJsonText.isBlank()) {
+                            Toast.makeText(context, "Сначала вставьте JSON", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
                         coroutineScope.launch {
-                            val result = viewModel.importLibraryJson(importJsonText, importReplaceMode)
-                            if (result.success) {
-                                Toast.makeText(
-                                    context,
-                                    "Импортировано: ${result.books.size} книг, ${result.adaptations.size} экранизаций, ${result.reviews.size} отзывов",
-                                    Toast.LENGTH_LONG
-                                ).show()
-                                showImportDialog = false
-                            } else {
-                                Toast.makeText(context, "Ошибка: ${result.errorMessage}", Toast.LENGTH_LONG).show()
+                            isImporting = true
+                            try {
+                                val result = viewModel.importLibraryJson(importJsonText, importReplaceMode)
+                                if (result.success) {
+                                    Toast.makeText(
+                                        context,
+                                        "Импортировано: ${result.books.size} книг, ${result.adaptations.size} экран., ${result.reviews.size} отзывов",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                    showImportDialog = false
+                                } else {
+                                    Toast.makeText(context, "Ошибка: ${result.errorMessage}", Toast.LENGTH_LONG).show()
+                                }
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Ошибка импорта: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                            } finally {
+                                isImporting = false
                             }
                         }
-                    }
+                    },
+                    enabled = !isImporting && importJsonText.isNotBlank()
                 ) {
+                    if (isImporting) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
                     Text("Импортировать")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showImportDialog = false }) {
+                TextButton(
+                    onClick = { showImportDialog = false },
+                    enabled = !isImporting
+                ) {
                     Text("Отмена")
                 }
             },
@@ -1314,34 +1650,60 @@ fun SettingsScreen(
 
     // Export Settings JSON Dialog
     if (showSettingsExportDialog) {
+        val previewSnippet = remember(settingsExportJsonText) {
+            settingsExportJsonText.lineSequence().take(25).joinToString("\n")
+        }
+
         AlertDialog(
             onDismissRequest = { showSettingsExportDialog = false },
             title = { Text("Экспорт настроек (JSON)") },
             text = {
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("Скопируйте JSON настроек:")
-                    OutlinedTextField(
-                        value = settingsExportJsonText,
-                        onValueChange = {},
-                        readOnly = true,
+                    Text("Превью настроек приложения:")
+                    Surface(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(200.dp),
-                        textStyle = MaterialTheme.typography.bodySmall
-                    )
+                            .heightIn(min = 100.dp, max = 180.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(8.dp)
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            Text(
+                                text = "$previewSnippet\n...",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 10.sp,
+                                    lineHeight = 14.sp
+                                ),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        val clip = ClipData.newPlainText("ReadTracker Settings", settingsExportJsonText)
-                        clipboard.setPrimaryClip(clip)
-                        Toast.makeText(context, "Настройки скопированы в буфер обмена", Toast.LENGTH_SHORT).show()
-                        showSettingsExportDialog = false
+                        try {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clip = ClipData.newPlainText("ReadTracker Settings", settingsExportJsonText)
+                            clipboard.setPrimaryClip(clip)
+                            Toast.makeText(context, "Настройки скопированы в буфер обмена", Toast.LENGTH_SHORT).show()
+                            showSettingsExportDialog = false
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "Ошибка: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                        }
                     }
                 ) {
                     Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -1366,18 +1728,53 @@ fun SettingsScreen(
             title = { Text("Импорт настроек (JSON)") },
             text = {
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Text("Вставьте JSON с сохранёнными настройками:")
+
+                    FilledTonalButton(
+                        onClick = {
+                            try {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                val clip = clipboard.primaryClip
+                                if (clip != null && clip.itemCount > 0) {
+                                    val pasted = clip.getItemAt(0).text?.toString() ?: ""
+                                    if (pasted.isNotBlank()) {
+                                        settingsImportJsonText = pasted
+                                        Toast.makeText(context, "Вставлено из буфера", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast.makeText(context, "Буфер пуст", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Ошибка чтения буфера", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.ContentPaste, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Вставить из буфера обмена", fontSize = 12.sp)
+                    }
+
                     OutlinedTextField(
                         value = settingsImportJsonText,
                         onValueChange = { settingsImportJsonText = it },
-                        placeholder = { Text("{\"themeMode\": \"...\", \"uniformHeadersEnabled\": true, ...}") },
+                        placeholder = { Text("{\"themeMode\": \"...\", ...}") },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(180.dp),
-                        textStyle = MaterialTheme.typography.bodySmall
+                            .height(140.dp),
+                        textStyle = MaterialTheme.typography.bodySmall,
+                        trailingIcon = {
+                            if (settingsImportJsonText.isNotEmpty()) {
+                                IconButton(onClick = { settingsImportJsonText = "" }) {
+                                    Icon(Icons.Default.Clear, contentDescription = "Очистить")
+                                }
+                            }
+                        }
                     )
                 }
             },

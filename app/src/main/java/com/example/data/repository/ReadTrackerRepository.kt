@@ -223,6 +223,23 @@ class ReadTrackerRepository(
         BackupHelper.exportLibraryToJson(books, adaptations, reviews, tierRows)
     }
 
+    suspend fun getLibraryExportData(): Pair<BackupHelper.ExportPayload, String> = withContext(Dispatchers.IO) {
+        val books = bookDao.getAllBooks().firstOrNull() ?: emptyList()
+        val adaptations = adaptationDao.getAllAdaptations().firstOrNull() ?: emptyList()
+        val reviews = reviewDao.getAllReviews().firstOrNull() ?: emptyList()
+        val tierRows = tierListDao.getAllRows().firstOrNull() ?: emptyList()
+        val payload = BackupHelper.ExportPayload(
+            version = 2,
+            exportedAt = System.currentTimeMillis(),
+            books = books,
+            adaptations = adaptations,
+            reviews = reviews,
+            tierRows = tierRows
+        )
+        val json = BackupHelper.exportPayloadToJson(payload)
+        payload to json
+    }
+
     suspend fun importLibrary(jsonString: String, replace: Boolean): BackupHelper.ImportResult = withContext(Dispatchers.IO) {
         val result = BackupHelper.parseLibraryJson(jsonString)
         if (result.success) {
