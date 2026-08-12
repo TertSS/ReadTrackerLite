@@ -9,6 +9,9 @@ interface ReviewDao {
     @Query("SELECT * FROM reviews ORDER BY createdAt DESC")
     fun getAllReviews(): Flow<List<Review>>
 
+    @Query("SELECT * FROM reviews ORDER BY createdAt DESC")
+    suspend fun getAllReviewsSync(): List<Review>
+
     @Query("SELECT COUNT(*) FROM reviews")
     suspend fun getReviewCount(): Int
 

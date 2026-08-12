@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -534,13 +535,14 @@ fun LibraryStatusFilterBar(
     onSelectStatus: (TitleStatus?) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val appStatusColors = LocalStatusColors.current
     val statusColors = listOf(
         null to ("Все" to MaterialTheme.colorScheme.primary),
-        TitleStatus.READING to ((if (currentMode == LibraryMode.BOOKS) "Читаю" else "Смотрю") to StatusReadingColor),
-        TitleStatus.PLANNED to ("В планах" to StatusPlannedColor),
-        TitleStatus.COMPLETED to ((if (currentMode == LibraryMode.BOOKS) "Завершено" else "Просмотрено") to StatusCompletedColor),
-        TitleStatus.PAUSED to ("Пауза" to StatusPausedColor),
-        TitleStatus.DROPPED to ("Брошено" to StatusDroppedColor)
+        TitleStatus.READING to ((if (currentMode == LibraryMode.BOOKS) "Читаю" else "Смотрю") to appStatusColors.reading),
+        TitleStatus.PLANNED to ("В планах" to appStatusColors.planned),
+        TitleStatus.COMPLETED to ((if (currentMode == LibraryMode.BOOKS) "Завершено" else "Просмотрено") to appStatusColors.completed),
+        TitleStatus.PAUSED to ("Пауза" to appStatusColors.paused),
+        TitleStatus.DROPPED to ("Брошено" to appStatusColors.dropped)
     )
 
     when (style) {
@@ -858,6 +860,10 @@ fun BookGridCard(
         colors = CardDefaults.cardColors(
             containerColor = if (!hasCover && coverlessStyle == "GRADIENT") {
                 MaterialTheme.colorScheme.surfaceContainer
+            } else if (!hasCover && coverlessStyle == "OUTLINE") {
+                Color.Transparent
+            } else if (!hasCover && coverlessStyle == "TONAL") {
+                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
             } else {
                 MaterialTheme.colorScheme.surfaceContainerLow
             }
@@ -866,6 +872,10 @@ fun BookGridCard(
             1.dp,
             if (!hasCover && coverlessStyle == "GRADIENT") {
                 MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
+            } else if (!hasCover && coverlessStyle == "OUTLINE") {
+                MaterialTheme.colorScheme.outline
+            } else if (!hasCover && coverlessStyle == "TONAL") {
+                Color.Transparent
             } else {
                 MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)
             }
@@ -1305,6 +1315,134 @@ fun BookGridCard(
                         )
                     }
                 }
+                "OUTLINE" -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            FormatBadge(format = book.format.shortLabel, alignFlush = alignFormatWithTitle)
+                            StatusBadge(status = book.status)
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = book.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = book.progressDisplay,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            if (ratingEnabled && book.rating > 0f) {
+                                Text(
+                                    text = "★ ${Formatters.formatRating(book.rating, ratingScale)}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = StarGold
+                                )
+                            }
+                        }
+                    }
+                }
+                "TYPOGRAPHY" -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = book.title.take(3).uppercase(),
+                            style = MaterialTheme.typography.displaySmall,
+                            fontWeight = FontWeight.Black,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Clip
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = book.title,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        StatusBadge(status = book.status)
+                    }
+                }
+                "TONAL" -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = book.title.take(1).uppercase(),
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Black,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            StatusBadge(status = book.status)
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = book.title,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        if (book.author.isNotEmpty()) {
+                            Text(
+                                text = book.author,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f),
+                                maxLines = 1
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            FormatBadge(format = book.format.shortLabel, alignFlush = alignFormatWithTitle)
+                            Text(
+                                text = book.progressDisplay,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
                 else -> {
                     // CLASSIC (Default monogram style)
                     Column(modifier = Modifier.fillMaxWidth()) {
@@ -1440,6 +1578,10 @@ fun BookListCard(
         colors = CardDefaults.cardColors(
             containerColor = if (!hasCover && coverlessStyle == "GRADIENT") {
                 MaterialTheme.colorScheme.surfaceContainer
+            } else if (!hasCover && coverlessStyle == "OUTLINE") {
+                Color.Transparent
+            } else if (!hasCover && coverlessStyle == "TONAL") {
+                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
             } else {
                 MaterialTheme.colorScheme.surfaceContainerLow
             }
@@ -1448,6 +1590,10 @@ fun BookListCard(
             1.dp,
             if (!hasCover && coverlessStyle == "GRADIENT") {
                 MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
+            } else if (!hasCover && coverlessStyle == "OUTLINE") {
+                MaterialTheme.colorScheme.outline
+            } else if (!hasCover && coverlessStyle == "TONAL") {
+                Color.Transparent
             } else {
                 MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
             }
@@ -1629,7 +1775,7 @@ fun BookListCard(
                     .padding(10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (showCovers || coverlessStyle == "GRADIENT" || coverlessStyle == "CLASSIC") {
+                if (hasCover) {
                     CoverImage(
                         coverUrl = book.coverUrl,
                         title = book.title,
@@ -1753,6 +1899,10 @@ fun AdaptationGridCard(
         colors = CardDefaults.cardColors(
             containerColor = if (!hasCover && coverlessStyle == "GRADIENT") {
                 MaterialTheme.colorScheme.surfaceContainer
+            } else if (!hasCover && coverlessStyle == "OUTLINE") {
+                Color.Transparent
+            } else if (!hasCover && coverlessStyle == "TONAL") {
+                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
             } else {
                 MaterialTheme.colorScheme.surfaceContainerLow
             }
@@ -1761,6 +1911,10 @@ fun AdaptationGridCard(
             1.dp,
             if (!hasCover && coverlessStyle == "GRADIENT") {
                 MaterialTheme.colorScheme.secondary.copy(alpha = 0.35f)
+            } else if (!hasCover && coverlessStyle == "OUTLINE") {
+                MaterialTheme.colorScheme.outline
+            } else if (!hasCover && coverlessStyle == "TONAL") {
+                Color.Transparent
             } else {
                 MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)
             }
@@ -1896,8 +2050,29 @@ fun AdaptationListCard(
             )
             .testTag("adaptation_card_${adaptation.id}"),
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+        colors = CardDefaults.cardColors(
+            containerColor = if (!hasCover && coverlessStyle == "GRADIENT") {
+                MaterialTheme.colorScheme.surfaceContainer
+            } else if (!hasCover && coverlessStyle == "OUTLINE") {
+                Color.Transparent
+            } else if (!hasCover && coverlessStyle == "TONAL") {
+                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
+            } else {
+                MaterialTheme.colorScheme.surfaceContainerLow
+            }
+        ),
+        border = BorderStroke(
+            1.dp,
+            if (!hasCover && coverlessStyle == "GRADIENT") {
+                MaterialTheme.colorScheme.secondary.copy(alpha = 0.35f)
+            } else if (!hasCover && coverlessStyle == "OUTLINE") {
+                MaterialTheme.colorScheme.outline
+            } else if (!hasCover && coverlessStyle == "TONAL") {
+                Color.Transparent
+            } else {
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
+            }
+        )
     ) {
         Row(
             modifier = Modifier
@@ -1905,7 +2080,7 @@ fun AdaptationListCard(
                 .padding(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (hasCover || coverlessStyle == "GRADIENT" || coverlessStyle == "CLASSIC") {
+            if (hasCover) {
                 CoverImage(
                     coverUrl = adaptation.coverUrl,
                     title = adaptation.title,

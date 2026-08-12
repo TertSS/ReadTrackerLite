@@ -30,7 +30,7 @@ data class AppSettings(
     val lastSelectedStatus: String? = null,
     val libraryStatusBarStyle: String = "PILLS", // PILLS, SEGMENTED, CARDS_COUNT
     val showStatusBarItemCounts: Boolean = true,
-    val coverlessCardStyle: String = "CLASSIC", // CLASSIC, MINIMAL, GRADIENT, COMPACT
+    val coverlessCardStyle: String = "CLASSIC", // CLASSIC, MINIMAL, GRADIENT, COMPACT, OUTLINE, TYPOGRAPHY, TONAL
     val compactTagPosition: String = "UNDER_STATUS", // UNDER_STATUS, LEFT_OF_STATUS
     val statsActiveTab: String = "ALL", // ALL, BOOKS, ADAPTATIONS
     val statsDefaultTab: String = "ALL", // ALL, BOOKS, ADAPTATIONS
@@ -93,5 +93,40 @@ data class AppSettings(
     val tabletLayoutEnabled: Boolean = true,
     
     // Animation settings
-    val disableAnimations: Boolean = false
+    val disableAnimations: Boolean = false,
+
+    // Color Palette and Custom HEX Theme Customization
+    val activePalette: String = "CLASSIC_DARK", // "CLASSIC_DARK", "MIDNIGHT_NEON", "OBSIDIAN_JADE", "ROYAL_AMETHYST", "VOLCANIC_SUNSET", "CUSTOM"
+    val customPrimaryHex: String = "#9ECAFF",
+    val customOnPrimaryHex: String = "#003258",
+    val customPrimaryContainerHex: String = "#2196F3",
+    val customOnPrimaryContainerHex: String = "#D1E4FF",
+    val customSecondaryHex: String = "#78DC77",
+    val customOnSecondaryHex: String = "#00390A",
+    val customSecondaryContainerHex: String = "#00761F",
+    val customOnSecondaryContainerHex: String = "#95FB92",
+    val customTertiaryHex: String = "#FFB77B",
+    val customOnTertiaryHex: String = "#4D2700",
+    val customTertiaryContainerHex: String = "#DB7900",
+    val customOnTertiaryContainerHex: String = "#FFDCC2",
+    val customBackgroundHex: String = "#131313",
+    val customOnBackgroundHex: String = "#E5E2E1",
+    val customSurfaceHex: String = "#131313",
+    val customOnSurfaceHex: String = "#E5E2E1",
+    val customSurfaceVariantHex: String = "#404752",
+    val customOnSurfaceVariantHex: String = "#BFC7D4",
+    val customSurfaceContainerLowestHex: String = "#0E0E0E",
+    val customSurfaceContainerLowHex: String = "#1C1B1B",
+    val customSurfaceContainerHex: String = "#201F1F",
+    val customSurfaceContainerHighHex: String = "#2A2A2A",
+    val customSurfaceContainerHighestHex: String = "#353534",
+    val customSurfaceBrightHex: String = "#393939",
+    val customOutlineHex: String = "#89919D",
+    val customOutlineVariantHex: String = "#404752",
+    val customErrorHex: String = "#FFB4AB",
+    val customStatusReadingHex: String = "#78DC77",
+    val customStatusPlannedHex: String = "#FFB77B",
+    val customStatusCompletedHex: String = "#9ECAFF",
+    val customStatusPausedHex: String = "#BFC7D4",
+    val customStatusDroppedHex: String = "#FFB4AB"
 )

@@ -216,18 +216,18 @@ class ReadTrackerRepository(
 
     // Backup & Restore
     suspend fun exportLibrary(): String = withContext(Dispatchers.IO) {
-        val books = bookDao.getAllBooks().firstOrNull() ?: emptyList()
-        val adaptations = adaptationDao.getAllAdaptations().firstOrNull() ?: emptyList()
-        val reviews = reviewDao.getAllReviews().firstOrNull() ?: emptyList()
-        val tierRows = tierListDao.getAllRows().firstOrNull() ?: emptyList()
+        val books = bookDao.getAllBooksSync()
+        val adaptations = adaptationDao.getAllAdaptationsSync()
+        val reviews = reviewDao.getAllReviewsSync()
+        val tierRows = tierListDao.getAllRowsList()
         BackupHelper.exportLibraryToJson(books, adaptations, reviews, tierRows)
     }
 
     suspend fun getLibraryExportData(): Pair<BackupHelper.ExportPayload, String> = withContext(Dispatchers.IO) {
-        val books = bookDao.getAllBooks().firstOrNull() ?: emptyList()
-        val adaptations = adaptationDao.getAllAdaptations().firstOrNull() ?: emptyList()
-        val reviews = reviewDao.getAllReviews().firstOrNull() ?: emptyList()
-        val tierRows = tierListDao.getAllRows().firstOrNull() ?: emptyList()
+        val books = bookDao.getAllBooksSync()
+        val adaptations = adaptationDao.getAllAdaptationsSync()
+        val reviews = reviewDao.getAllReviewsSync()
+        val tierRows = tierListDao.getAllRowsList()
         val payload = BackupHelper.ExportPayload(
             version = 2,
             exportedAt = System.currentTimeMillis(),

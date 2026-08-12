@@ -68,6 +68,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val settings by viewModel.appSettings.collectAsStateWithLifecycle()
             ReadTrackerTheme(
+                settings = settings,
                 roundedInputFields = settings.roundedInputFields
             ) {
                 if (crashMessage != null) {

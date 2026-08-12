@@ -24,6 +24,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
@@ -67,6 +68,15 @@ fun SettingsScreen(
     var showSettingsImportDialog by remember { mutableStateOf(false) }
     var settingsExportJsonText by remember { mutableStateOf("") }
     var settingsImportJsonText by remember { mutableStateOf("") }
+    var showCustomPaletteEditor by remember { mutableStateOf(false) }
+
+    if (showCustomPaletteEditor) {
+        CustomPaletteEditorScreen(
+            viewModel = viewModel,
+            onDismiss = { showCustomPaletteEditor = false }
+        )
+        return
+    }
 
     // SAF File Pickers for Export and Import (Library)
     val exportFileLauncher = rememberLauncherForActivityResult(
@@ -189,6 +199,252 @@ fun SettingsScreen(
                 .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // 🎨 COLOR PALETTES & THEMES SECTION
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Palette,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                                Text(
+                                    text = "Цветовые палитры и темы",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            Text(
+                                text = "5 готовых темных тем или полная настройка HEX-кодов всех цветов",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    // 5 Ready Dark Presets
+                    PresetPalettes.forEach { palette ->
+                        val isSelected = settings.activePalette == palette.id
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.updateAppSettings(settings.copy(activePalette = palette.id))
+                                    Toast.makeText(context, "Применена тема: ${palette.name}", Toast.LENGTH_SHORT).show()
+                                },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isSelected) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.surfaceContainer
+                            ),
+                            border = if (isSelected) {
+                                BorderStroke(2.dp, palette.primary)
+                            } else {
+                                BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                            }
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(16.dp)
+                                                .clip(CircleShape)
+                                                .background(palette.primary)
+                                                .border(1.dp, Color.White.copy(alpha = 0.4f), CircleShape)
+                                        )
+                                        Text(
+                                            text = palette.name,
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+
+                                    if (isSelected) {
+                                        Surface(
+                                            shape = RoundedCornerShape(8.dp),
+                                            color = palette.primary.copy(alpha = 0.2f),
+                                            border = BorderStroke(1.dp, palette.primary)
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Check,
+                                                    contentDescription = null,
+                                                    tint = palette.primary,
+                                                    modifier = Modifier.size(14.dp)
+                                                )
+                                                Text(
+                                                    text = "Активна",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = palette.primary
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Text(
+                                    text = palette.description,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+
+                                // Palette Color Swatches Preview Strip
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    ColorDotSample(palette.background, "Фон")
+                                    ColorDotSample(palette.surface, "Карточки")
+                                    ColorDotSample(palette.primary, "Акцент")
+                                    ColorDotSample(palette.secondary, "Вторичн.")
+                                    ColorDotSample(palette.tertiary, "Третичн.")
+                                    ColorDotSample(palette.statusReading, "Читаю")
+                                    ColorDotSample(palette.statusPlanned, "Планы")
+                                    ColorDotSample(palette.statusCompleted, "Финал")
+                                }
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+
+                    // Custom HEX Palette Editor Card Entry
+                    val isCustomSelected = settings.activePalette == "CUSTOM"
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showCustomPaletteEditor = true },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isCustomSelected) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.surfaceContainer
+                        ),
+                        border = if (isCustomSelected) {
+                            BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+                        } else {
+                            BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                        }
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.ColorLens,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Text(
+                                        text = "Собственная палитра (HEX редактор)",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+
+                                if (isCustomSelected) {
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+                                    ) {
+                                        Text(
+                                            text = "Активна",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            Text(
+                                text = "Отдельное окно для изменения цвета абсолютно любого элемента приложения по HEX-коду (общий фон, карточки, акценты, текст, рамки, кнопки и все 5 статусов).",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            // Preview current custom colors
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                ColorDotSample(parseColorHex(settings.customBackgroundHex, Color(0xFF131313)), "Фон")
+                                ColorDotSample(parseColorHex(settings.customSurfaceHex, Color(0xFF131313)), "Карточка")
+                                ColorDotSample(parseColorHex(settings.customPrimaryHex, Color(0xFF9ECAFF)), "Акцент")
+                                ColorDotSample(parseColorHex(settings.customSecondaryHex, Color(0xFF78DC77)), "Вторичн.")
+                                ColorDotSample(parseColorHex(settings.customTertiaryHex, Color(0xFFFFB77B)), "Третичн.")
+                                ColorDotSample(parseColorHex(settings.customStatusReadingHex, Color(0xFF78DC77)), "Читаю")
+                                ColorDotSample(parseColorHex(settings.customStatusPlannedHex, Color(0xFFFFB77B)), "Планы")
+                                ColorDotSample(parseColorHex(settings.customStatusCompletedHex, Color(0xFF9ECAFF)), "Финал")
+                            }
+
+                            Button(
+                                onClick = { showCustomPaletteEditor = true },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Открыть HEX-редактор палитры", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+
             // General Preferences
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -607,6 +863,21 @@ fun SettingsScreen(
                                 selected = settings.coverlessCardStyle == "COMPACT",
                                 onClick = { viewModel.updateAppSettings(settings.copy(coverlessCardStyle = "COMPACT")) },
                                 label = { Text("Компактный") }
+                            )
+                            FilterChip(
+                                selected = settings.coverlessCardStyle == "OUTLINE",
+                                onClick = { viewModel.updateAppSettings(settings.copy(coverlessCardStyle = "OUTLINE")) },
+                                label = { Text("Контурный") }
+                            )
+                            FilterChip(
+                                selected = settings.coverlessCardStyle == "TYPOGRAPHY",
+                                onClick = { viewModel.updateAppSettings(settings.copy(coverlessCardStyle = "TYPOGRAPHY")) },
+                                label = { Text("Типографика") }
+                            )
+                            FilterChip(
+                                selected = settings.coverlessCardStyle == "TONAL",
+                                onClick = { viewModel.updateAppSettings(settings.copy(coverlessCardStyle = "TONAL")) },
+                                label = { Text("Тональный") }
                             )
                         }
                     }
@@ -1853,6 +2124,30 @@ fun SettingToggleRow(
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange
+        )
+    }
+}
+
+@Composable
+private fun ColorDotSample(
+    color: Color,
+    label: String
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(24.dp)
+                .clip(CircleShape)
+                .background(color)
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), CircleShape)
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

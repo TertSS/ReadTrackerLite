@@ -1,17 +1,18 @@
 package com.example.ui.theme
 
 import android.app.Activity
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
+import com.example.data.models.AppSettings
 
 private val DefaultShapes = Shapes(
     extraSmall = RoundedCornerShape(4.dp),
@@ -29,45 +30,15 @@ private val RoundedShapes = Shapes(
     extraLarge = RoundedCornerShape(28.dp)
 )
 
-private val ReadTrackerDarkScheme = darkColorScheme(
-    primary = PrimaryBlue,
-    onPrimary = OnPrimary,
-    primaryContainer = PrimaryContainerBlue,
-    onPrimaryContainer = OnPrimaryContainer,
-    secondary = SecondaryGreen,
-    onSecondary = OnSecondary,
-    secondaryContainer = SecondaryContainerGreen,
-    onSecondaryContainer = OnSecondaryContainer,
-    tertiary = TertiaryAmber,
-    onTertiary = OnTertiary,
-    tertiaryContainer = TertiaryContainerAmber,
-    onTertiaryContainer = OnTertiaryContainer,
-    background = SurfaceDark,
-    onBackground = OnSurfaceWhite,
-    surface = SurfaceDark,
-    onSurface = OnSurfaceWhite,
-    surfaceVariant = SurfaceContainerHighest,
-    onSurfaceVariant = OnSurfaceVariantGray,
-    surfaceContainer = SurfaceContainer,
-    surfaceContainerLow = SurfaceContainerLow,
-    surfaceContainerHigh = SurfaceContainerHigh,
-    surfaceContainerHighest = SurfaceContainerHighest,
-    surfaceContainerLowest = SurfaceContainerLowest,
-    surfaceBright = SurfaceBright,
-    outline = OutlineGray,
-    outlineVariant = OutlineVariantGray,
-    error = ErrorRed,
-    errorContainer = ErrorContainerRed,
-    onError = OnError
-)
-
 @Composable
 fun ReadTrackerTheme(
-    darkTheme: Boolean = true, // Default to stylish dark mode from mockup
-    roundedInputFields: Boolean = false,
+    settings: AppSettings = AppSettings(),
+    darkTheme: Boolean = true,
+    roundedInputFields: Boolean = settings.roundedInputFields,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = ReadTrackerDarkScheme
+    val colorScheme = remember(settings) { buildColorSchemeFromSettings(settings) }
+    val statusColors = remember(settings) { buildStatusColorsFromSettings(settings) }
     val shapes = if (roundedInputFields) RoundedShapes else DefaultShapes
 
     val view = LocalView.current
@@ -78,6 +49,8 @@ fun ReadTrackerTheme(
             }.filterIsInstance<Activity>().firstOrNull()
             
             activity?.window?.let { window ->
+                window.statusBarColor = colorScheme.background.toArgb()
+                window.navigationBarColor = colorScheme.background.toArgb()
                 WindowCompat.getInsetsController(window, view).apply {
                     isAppearanceLightStatusBars = false
                     isAppearanceLightNavigationBars = false
@@ -86,10 +59,15 @@ fun ReadTrackerTheme(
         }
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        shapes = shapes,
-        content = content
-    )
+    CompositionLocalProvider(
+        LocalStatusColors provides statusColors
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            shapes = shapes,
+            content = content
+        )
+    }
 }
+

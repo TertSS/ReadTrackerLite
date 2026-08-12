@@ -263,33 +263,17 @@ fun StatusBadge(
     isAdaptation: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    val (bgColor, textColor, text) = when (status) {
-        TitleStatus.READING -> Triple(
-            StatusReadingColor.copy(alpha = 0.15f),
-            StatusReadingColor,
-            if (isAdaptation) "Смотрю" else "Читаю"
-        )
-        TitleStatus.PLANNED -> Triple(
-            StatusPlannedColor.copy(alpha = 0.15f),
-            StatusPlannedColor,
-            "В планах"
-        )
-        TitleStatus.COMPLETED -> Triple(
-            StatusCompletedColor.copy(alpha = 0.15f),
-            StatusCompletedColor,
-            if (isAdaptation) "Просмотрено" else "Завершено"
-        )
-        TitleStatus.PAUSED -> Triple(
-            StatusPausedColor.copy(alpha = 0.15f),
-            StatusPausedColor,
-            "На паузе"
-        )
-        TitleStatus.DROPPED -> Triple(
-            StatusDroppedColor.copy(alpha = 0.15f),
-            StatusDroppedColor,
-            "Брошено"
-        )
+    val statusColors = LocalStatusColors.current
+    val (statusColor, text) = when (status) {
+        TitleStatus.READING -> statusColors.reading to (if (isAdaptation) "Смотрю" else "Читаю")
+        TitleStatus.PLANNED -> statusColors.planned to "В планах"
+        TitleStatus.COMPLETED -> statusColors.completed to (if (isAdaptation) "Просмотрено" else "Завершено")
+        TitleStatus.PAUSED -> statusColors.paused to "На паузе"
+        TitleStatus.DROPPED -> statusColors.dropped to "Брошено"
     }
+
+    val bgColor = statusColor.copy(alpha = 0.15f)
+    val textColor = statusColor
 
     Surface(
         modifier = modifier.clip(RoundedCornerShape(6.dp)),

@@ -408,14 +408,15 @@ fun ModernAddEditTitleScreen(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
+                                val appStatusColors = LocalStatusColors.current
                                 TitleStatus.entries.forEach { st ->
                                     val isSelected = status == st
                                     val statusColor = when (st) {
-                                        TitleStatus.READING -> StatusReadingColor
-                                        TitleStatus.COMPLETED -> StatusCompletedColor
-                                        TitleStatus.PLANNED -> StatusPlannedColor
-                                        TitleStatus.DROPPED -> StatusDroppedColor
-                                        TitleStatus.PAUSED -> StatusPausedColor
+                                        TitleStatus.READING -> appStatusColors.reading
+                                        TitleStatus.COMPLETED -> appStatusColors.completed
+                                        TitleStatus.PLANNED -> appStatusColors.planned
+                                        TitleStatus.DROPPED -> appStatusColors.dropped
+                                        TitleStatus.PAUSED -> appStatusColors.paused
                                     }
                                     FilterChip(
                                         selected = isSelected,

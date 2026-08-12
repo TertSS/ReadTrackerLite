@@ -9,6 +9,9 @@ interface AdaptationDao {
     @Query("SELECT * FROM adaptations ORDER BY updatedAt DESC")
     fun getAllAdaptations(): Flow<List<Adaptation>>
 
+    @Query("SELECT * FROM adaptations ORDER BY updatedAt DESC")
+    suspend fun getAllAdaptationsSync(): List<Adaptation>
+
     @Query("SELECT COUNT(*) FROM adaptations")
     suspend fun getAdaptationCount(): Int
 
