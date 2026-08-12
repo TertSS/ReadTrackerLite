@@ -75,6 +75,7 @@ class ReadTrackerViewModel(
                 if (settings.rememberLastTab && settings.lastActiveTab.isNotBlank()) {
                     currentTab.value = settings.lastActiveTab
                 }
+                libraryMode.value = settings.libraryMode
             }
         }
     }
@@ -592,8 +593,17 @@ class ReadTrackerViewModel(
 
     // Settings & Goals Actions
     fun updateAppSettings(settings: AppSettings) {
+        libraryMode.value = settings.libraryMode
         viewModelScope.launch {
             repository.updateSettings(settings)
+        }
+    }
+
+    fun setLibraryMode(mode: LibraryMode) {
+        libraryMode.value = mode
+        viewModelScope.launch {
+            val updated = appSettings.value.copy(libraryMode = mode)
+            repository.updateSettings(updated)
         }
     }
 

@@ -60,6 +60,7 @@ fun ModernAddEditAdaptationScreen(
     val customAddedGenres = remember { mutableStateListOf<String>() }
 
     // Series Seasons state
+    var expandedSeasons by remember { mutableStateOf(setOf<Int>()) }
     var seasons by remember {
         mutableStateOf(
             existingAdaptation?.seasons ?: listOf(
@@ -452,26 +453,41 @@ fun ModernAddEditAdaptationScreen(
                                 )
 
                                 seasons.forEachIndexed { index, s ->
+                                    val isExpanded = expandedSeasons.contains(s.seasonNumber)
+                                    val seasonTotalMins = s.calculateTotalSeasonDurationMinutes()
+
                                     Surface(
                                         modifier = Modifier.fillMaxWidth(),
-                                        shape = RoundedCornerShape(12.dp),
+                                        shape = RoundedCornerShape(14.dp),
                                         color = MaterialTheme.colorScheme.surfaceContainerHigh
                                     ) {
-                                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                             Row(
                                                 modifier = Modifier.fillMaxWidth(),
                                                 horizontalArrangement = Arrangement.SpaceBetween,
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
-                                                Text("Сезон ${s.seasonNumber}", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                                                Column {
+                                                    Text(
+                                                        text = "Сезон ${s.seasonNumber}",
+                                                        fontWeight = FontWeight.Bold,
+                                                        style = MaterialTheme.typography.titleMedium,
+                                                        color = MaterialTheme.colorScheme.onSurface
+                                                    )
+                                                    Text(
+                                                        text = "Длительность: ${Formatters.formatDuration(seasonTotalMins)} (${seasonTotalMins} мин)",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                }
                                                 if (seasons.size > 1) {
                                                     IconButton(
                                                         onClick = {
                                                             seasons = seasons.toMutableList().also { it.removeAt(index) }
                                                         },
-                                                        modifier = Modifier.size(24.dp)
+                                                        modifier = Modifier.size(28.dp)
                                                     ) {
-                                                        Icon(Icons.Default.DeleteOutline, contentDescription = "Удалить", tint = MaterialTheme.colorScheme.error)
+                                                        Icon(Icons.Default.DeleteOutline, contentDescription = "Удалить сезон", tint = MaterialTheme.colorScheme.error)
                                                     }
                                                 }
                                             }
@@ -486,7 +502,7 @@ fun ModernAddEditAdaptationScreen(
                                                     onValueChange = { str ->
                                                         val num = str.filter { it.isDigit() }.toIntOrNull() ?: 0
                                                         seasons = seasons.toMutableList().also { list ->
-                                                             list[index] = s.copy(watchedEpisodes = num)
+                                                            list[index] = s.copy(watchedEpisodes = num)
                                                         }
                                                     },
                                                     label = { Text("Просмотрено") },
@@ -516,10 +532,198 @@ fun ModernAddEditAdaptationScreen(
                                                         list[index] = s.copy(defaultEpisodeDurationMinutes = num)
                                                     }
                                                 },
-                                                label = { Text("Длительность серии (мин)") },
+                                                label = { Text("Общая длительность серии (мин)") },
+                                                supportingText = {
+                                                    Text("Применяется по умолчанию для всех серий этого сезона")
+                                                },
                                                 modifier = Modifier.fillMaxWidth(),
                                                 singleLine = true
                                             )
+
+                                            // Expandable toggle for episode durations customization
+                                            Surface(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .clickable {
+                                                        expandedSeasons = if (isExpanded) {
+                                                            expandedSeasons - s.seasonNumber
+                                                        } else {
+                                                            expandedSeasons + s.seasonNumber
+                                                        }
+                                                    },
+                                                color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f)
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                                        Icon(
+                                                            imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                                            contentDescription = null,
+                                                            tint = MaterialTheme.colorScheme.secondary,
+                                                            modifier = Modifier.size(18.dp)
+                                                        )
+                                                        Spacer(modifier = Modifier.width(6.dp))
+                                                        Text(
+                                                            text = if (isExpanded) "Свернуть список серий" else "Настроить серии по отдельности (${s.totalEpisodes} эп.)",
+                                                            style = MaterialTheme.typography.bodySmall,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = MaterialTheme.colorScheme.secondary
+                                                        )
+                                                    }
+
+                                                    if (s.episodeDurations.isNotEmpty()) {
+                                                        Surface(
+                                                            shape = RoundedCornerShape(6.dp),
+                                                            color = MaterialTheme.colorScheme.secondaryContainer
+                                                        ) {
+                                                            Text(
+                                                                text = "${s.episodeDurations.size} спец.",
+                                                                style = MaterialTheme.typography.labelSmall,
+                                                                fontWeight = FontWeight.Bold,
+                                                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            // Expanded Episode List
+                                            if (isExpanded) {
+                                                Column(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(top = 4.dp),
+                                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                                ) {
+                                                    Text(
+                                                        text = "По умолчанию везде стоит ${s.defaultEpisodeDurationMinutes} мин. Вы можете изменить длительность конкретных серий (например, для 1-й серии задать 48 мин):",
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+
+                                                    if (s.episodeDurations.isNotEmpty()) {
+                                                        Row(
+                                                            modifier = Modifier.fillMaxWidth(),
+                                                            horizontalArrangement = Arrangement.End
+                                                        ) {
+                                                            TextButton(
+                                                                onClick = {
+                                                                    seasons = seasons.toMutableList().also { list ->
+                                                                        list[index] = s.copy(episodeDurations = emptyMap())
+                                                                    }
+                                                                },
+                                                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                                                            ) {
+                                                                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(14.dp))
+                                                                Spacer(modifier = Modifier.width(4.dp))
+                                                                Text("Сбросить все к ${s.defaultEpisodeDurationMinutes} мин", fontSize = 11.sp)
+                                                            }
+                                                        }
+                                                    }
+
+                                                    val episodeCount = maxOf(s.totalEpisodes, if (s.watchedEpisodes > 0) s.watchedEpisodes else 1)
+                                                    for (epNum in 1..episodeCount) {
+                                                        val isCustom = s.episodeDurations.containsKey(epNum.toString())
+                                                        val epDuration = s.getEpisodeDuration(epNum)
+                                                        val isWatched = epNum <= s.watchedEpisodes
+
+                                                        Surface(
+                                                            modifier = Modifier.fillMaxWidth(),
+                                                            shape = RoundedCornerShape(8.dp),
+                                                            color = if (isCustom) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.25f)
+                                                                   else MaterialTheme.colorScheme.surfaceContainerLow,
+                                                            border = if (isCustom) BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f)) else null
+                                                        ) {
+                                                            Row(
+                                                                modifier = Modifier
+                                                                    .fillMaxWidth()
+                                                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                                verticalAlignment = Alignment.CenterVertically
+                                                            ) {
+                                                                Row(
+                                                                    verticalAlignment = Alignment.CenterVertically,
+                                                                    modifier = Modifier.weight(1f, fill = false)
+                                                                ) {
+                                                                    Text(
+                                                                        text = "Серия $epNum",
+                                                                        style = MaterialTheme.typography.bodyMedium,
+                                                                        fontWeight = if (isCustom) FontWeight.Bold else FontWeight.Medium,
+                                                                        color = if (isWatched) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                                                    )
+                                                                    if (isWatched) {
+                                                                        Spacer(modifier = Modifier.width(6.dp))
+                                                                        Text(
+                                                                            text = "✓ просмотрено",
+                                                                            style = MaterialTheme.typography.labelSmall,
+                                                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                                                            fontSize = 10.sp
+                                                                        )
+                                                                    }
+                                                                    if (isCustom) {
+                                                                        Spacer(modifier = Modifier.width(6.dp))
+                                                                        Text(
+                                                                            text = "(спец-длит.)",
+                                                                            style = MaterialTheme.typography.labelSmall,
+                                                                            color = MaterialTheme.colorScheme.secondary,
+                                                                            fontSize = 10.sp
+                                                                        )
+                                                                    }
+                                                                }
+
+                                                                Row(
+                                                                    verticalAlignment = Alignment.CenterVertically,
+                                                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                                                ) {
+                                                                    OutlinedTextField(
+                                                                        value = epDuration.toString(),
+                                                                        onValueChange = { newVal ->
+                                                                            val mins = newVal.filter { it.isDigit() }.toIntOrNull() ?: s.defaultEpisodeDurationMinutes
+                                                                            val updatedMap = s.episodeDurations.toMutableMap().apply {
+                                                                                put(epNum.toString(), mins)
+                                                                            }
+                                                                            seasons = seasons.toMutableList().also { list ->
+                                                                                list[index] = s.copy(episodeDurations = updatedMap)
+                                                                            }
+                                                                        },
+                                                                        suffix = { Text("мин", fontSize = 11.sp) },
+                                                                        singleLine = true,
+                                                                        modifier = Modifier.width(105.dp)
+                                                                    )
+
+                                                                    if (isCustom) {
+                                                                        IconButton(
+                                                                            onClick = {
+                                                                                val updatedMap = s.episodeDurations.toMutableMap().apply {
+                                                                                    remove(epNum.toString())
+                                                                                }
+                                                                                seasons = seasons.toMutableList().also { list ->
+                                                                                    list[index] = s.copy(episodeDurations = updatedMap)
+                                                                                }
+                                                                            },
+                                                                            modifier = Modifier.size(32.dp)
+                                                                        ) {
+                                                                            Icon(
+                                                                                Icons.Default.Close,
+                                                                                contentDescription = "Сбросить",
+                                                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                                                modifier = Modifier.size(16.dp)
+                                                                            )
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 }

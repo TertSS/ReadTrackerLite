@@ -95,7 +95,7 @@ fun LibraryScreen(
                         if (settings.adaptationsEnabled && settings.showLibraryModeSwitcher) {
                             ModeTogglePill(
                                 currentMode = currentMode,
-                                onModeChanged = { viewModel.libraryMode.value = it },
+                                onModeChanged = { viewModel.setLibraryMode(it) },
                                 showAdaptations = true
                             )
                         }
@@ -239,6 +239,7 @@ fun LibraryScreen(
                     selectedStatus = selectedStatus,
                     currentMode = currentMode,
                     style = settings.libraryStatusBarStyle,
+                    showCounts = settings.showStatusBarItemCounts,
                     allBooks = allBooks,
                     allAdaptations = allAdaptations,
                     onSelectStatus = { viewModel.selectedStatusFilter.value = it }
@@ -524,19 +525,20 @@ fun LibraryScreen(
 fun LibraryStatusFilterBar(
     selectedStatus: TitleStatus?,
     currentMode: LibraryMode,
-    style: String, // "PILLS", "SEGMENTED", "CARDS_COUNT"
+    style: String, // "PILLS" (Modern Chips), "SEGMENTED", "CARDS_COUNT", "MINIMAL_LINE"
+    showCounts: Boolean = true,
     allBooks: List<BookTitle>,
     allAdaptations: List<Adaptation>,
     onSelectStatus: (TitleStatus?) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val statusTabs = listOf(
-        null to "Все",
-        TitleStatus.READING to (if (currentMode == LibraryMode.BOOKS) "Читаю" else "Смотрю"),
-        TitleStatus.PLANNED to "В планах",
-        TitleStatus.COMPLETED to (if (currentMode == LibraryMode.BOOKS) "Завершено" else "Просмотрено"),
-        TitleStatus.PAUSED to "Пауза",
-        TitleStatus.DROPPED to "Брошено"
+    val statusColors = listOf(
+        null to ("Все" to MaterialTheme.colorScheme.primary),
+        TitleStatus.READING to ((if (currentMode == LibraryMode.BOOKS) "Читаю" else "Смотрю") to StatusReadingColor),
+        TitleStatus.PLANNED to ("В планах" to StatusPlannedColor),
+        TitleStatus.COMPLETED to ((if (currentMode == LibraryMode.BOOKS) "Завершено" else "Просмотрено") to StatusCompletedColor),
+        TitleStatus.PAUSED to ("Пауза" to StatusPausedColor),
+        TitleStatus.DROPPED to ("Брошено" to StatusDroppedColor)
     )
 
     when (style) {
@@ -568,6 +570,11 @@ fun LibraryStatusFilterBar(
                     statusIcons.forEach { (status, pair) ->
                         val (label, icon) = pair
                         val isSelected = selectedStatus == status
+                        val count = if (status == null) {
+                            if (currentMode == LibraryMode.BOOKS) allBooks.size else allAdaptations.size
+                        } else {
+                            if (currentMode == LibraryMode.BOOKS) allBooks.count { it.status == status } else allAdaptations.count { it.status == status }
+                        }
                         Surface(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(10.dp))
@@ -594,6 +601,15 @@ fun LibraryStatusFilterBar(
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                     color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
                                 )
+                                if (showCounts) {
+                                    Text(
+                                        text = "$count",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp,
+                                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                    )
+                                }
                             }
                         }
                     }
@@ -601,14 +617,132 @@ fun LibraryStatusFilterBar(
             }
         }
         "CARDS_COUNT" -> {
-            val statusColors = listOf(
-                null to ("Все" to MaterialTheme.colorScheme.primary),
-                TitleStatus.READING to ((if (currentMode == LibraryMode.BOOKS) "Читаю" else "Смотрю") to StatusReadingColor),
-                TitleStatus.PLANNED to ("В планах" to StatusPlannedColor),
-                TitleStatus.COMPLETED to ((if (currentMode == LibraryMode.BOOKS) "Завершено" else "Просмотрено") to StatusCompletedColor),
-                TitleStatus.PAUSED to ("Пауза" to StatusPausedColor),
-                TitleStatus.DROPPED to ("Брошено" to StatusDroppedColor)
-            )
+            Row(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                statusColors.forEach { (status, pair) ->
+                    val (label, color) = pair
+                    val isSelected = selectedStatus == status
+                    val count = if (status == null) {
+                        if (currentMode == LibraryMode.BOOKS) allBooks.size else allAdaptations.size
+                    } else {
+                        if (currentMode == LibraryMode.BOOKS) allBooks.count { it.status == status } else allAdaptations.count { it.status == status }
+                    }
+                    Surface(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(14.dp))
+                            .clickable { onSelectStatus(status) }
+                            .testTag("status_tab_${status?.id ?: "all"}"),
+                        color = if (isSelected) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.surfaceContainerLow,
+                        shape = RoundedCornerShape(14.dp),
+                        border = BorderStroke(
+                            if (isSelected) 1.5.dp else 0.8.dp,
+                            if (isSelected) color else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                            horizontalAlignment = Alignment.Start,
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(7.dp)
+                                        .clip(CircleShape)
+                                        .background(color)
+                                )
+                                Text(
+                                    text = label,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isSelected) color else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            if (showCounts) {
+                                Text(
+                                    text = "$count",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Black,
+                                    color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        "MINIMAL_LINE" -> {
+            Row(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                statusColors.forEach { (status, pair) ->
+                    val (label, color) = pair
+                    val isSelected = selectedStatus == status
+                    val count = if (status == null) {
+                        if (currentMode == LibraryMode.BOOKS) allBooks.size else allAdaptations.size
+                    } else {
+                        if (currentMode == LibraryMode.BOOKS) allBooks.count { it.status == status } else allAdaptations.count { it.status == status }
+                    }
+                    Column(
+                        modifier = Modifier
+                            .clickable { onSelectStatus(status) }
+                            .padding(vertical = 4.dp)
+                            .testTag("status_tab_${status?.id ?: "all"}"),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(if (isSelected) color else color.copy(alpha = 0.4f))
+                            )
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            if (showCounts) {
+                                Text(
+                                    text = "($count)",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isSelected) color else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Box(
+                            modifier = Modifier
+                                .height(2.5.dp)
+                                .width(if (isSelected) 36.dp else 0.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(if (isSelected) color else Color.Transparent)
+                        )
+                    }
+                }
+            }
+        }
+        else -> {
+            // "PILLS" -> Redesigned into Modern Elevated Bento Chips with Glow Dots & Counts
             Row(
                 modifier = modifier
                     .fillMaxWidth()
@@ -630,79 +764,62 @@ fun LibraryStatusFilterBar(
                             .clip(RoundedCornerShape(12.dp))
                             .clickable { onSelectStatus(status) }
                             .testTag("status_tab_${status?.id ?: "all"}"),
-                        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.75f) else MaterialTheme.colorScheme.surfaceContainerLow,
+                        color = if (isSelected) color.copy(alpha = 0.14f) else MaterialTheme.colorScheme.surfaceContainerLow,
                         shape = RoundedCornerShape(12.dp),
                         border = BorderStroke(
-                            if (isSelected) 1.5.dp else 0.8.dp,
-                            if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)
+                            if (isSelected) 1.5.dp else 1.dp,
+                            if (isSelected) color.copy(alpha = 0.8f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)
                         )
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
+                            // Glowing Dot Indicator
                             Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(color)
-                            )
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier.size(12.dp)
+                            ) {
+                                if (isSelected) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(12.dp)
+                                            .clip(CircleShape)
+                                            .background(color.copy(alpha = 0.25f))
+                                    )
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .clip(CircleShape)
+                                        .background(if (isSelected) color else color.copy(alpha = 0.6f))
+                                    )
+                            }
+
                             Text(
                                 text = label,
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                                color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            Surface(
-                                shape = CircleShape,
-                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
-                                modifier = Modifier.padding(start = 2.dp)
-                            ) {
-                                Text(
-                                    text = "$count",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 11.sp,
-                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
-                                )
+
+                            if (showCounts) {
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = if (isSelected) color.copy(alpha = 0.22f) else MaterialTheme.colorScheme.surfaceContainerHighest
+                                ) {
+                                    Text(
+                                        text = "$count",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 11.sp,
+                                        color = if (isSelected) color else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                    )
+                                }
                             }
                         }
-                    }
-                }
-            }
-        }
-        else -> {
-            // "PILLS"
-            Row(
-                modifier = modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                statusTabs.forEach { (status, label) ->
-                    val isSelected = selectedStatus == status
-                    Surface(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .clickable { onSelectStatus(status) }
-                            .testTag("status_tab_${status?.id ?: "all"}"),
-                        color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.16f) else MaterialTheme.colorScheme.surfaceContainerLow,
-                        shape = CircleShape,
-                        border = BorderStroke(
-                            1.dp,
-                            if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.6f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
-                        )
-                    ) {
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
                     }
                 }
             }

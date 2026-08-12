@@ -15,7 +15,7 @@ import com.example.data.models.*
         TierListRow::class,
         AppSettings::class
     ],
-    version = 14,
+    version = 16,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

@@ -201,12 +201,18 @@ fun SettingsScreen(
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             FilterChip(
                                 selected = settings.libraryMode == LibraryMode.BOOKS,
-                                onClick = { viewModel.updateAppSettings(settings.copy(libraryMode = LibraryMode.BOOKS)) },
+                                onClick = { 
+                                    viewModel.updateAppSettings(settings.copy(libraryMode = LibraryMode.BOOKS))
+                                    viewModel.setLibraryMode(LibraryMode.BOOKS)
+                                },
                                 label = { Text("Книги") }
                             )
                             FilterChip(
                                 selected = settings.libraryMode == LibraryMode.ADAPTATIONS,
-                                onClick = { viewModel.updateAppSettings(settings.copy(libraryMode = LibraryMode.ADAPTATIONS)) },
+                                onClick = { 
+                                    viewModel.updateAppSettings(settings.copy(libraryMode = LibraryMode.ADAPTATIONS, adaptationsEnabled = true))
+                                    viewModel.setLibraryMode(LibraryMode.ADAPTATIONS)
+                                },
                                 label = { Text("Экранизации") }
                             )
                         }
@@ -461,7 +467,7 @@ fun SettingsScreen(
                         ) {
                             Column {
                                 Text("Стиль блока статусов библиотеки", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                                Text("Выберите оформление панели переключения статусов", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("Выберите оформление панели фильтрации по статусам", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             FlowRow(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -470,20 +476,60 @@ fun SettingsScreen(
                                 FilterChip(
                                     selected = settings.libraryStatusBarStyle == "PILLS",
                                     onClick = { viewModel.updateAppSettings(settings.copy(libraryStatusBarStyle = "PILLS")) },
-                                    label = { Text("Капсулы") }
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Widgets,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    },
+                                    label = { Text("Бенто-чипы") }
                                 )
                                 FilterChip(
                                     selected = settings.libraryStatusBarStyle == "SEGMENTED",
                                     onClick = { viewModel.updateAppSettings(settings.copy(libraryStatusBarStyle = "SEGMENTED")) },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.ViewAgenda,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    },
                                     label = { Text("Сегментная") }
                                 )
                                 FilterChip(
                                     selected = settings.libraryStatusBarStyle == "CARDS_COUNT",
                                     onClick = { viewModel.updateAppSettings(settings.copy(libraryStatusBarStyle = "CARDS_COUNT")) },
-                                    label = { Text("Счётчики") }
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Dashboard,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    },
+                                    label = { Text("Карточки") }
+                                )
+                                FilterChip(
+                                    selected = settings.libraryStatusBarStyle == "MINIMAL_LINE",
+                                    onClick = { viewModel.updateAppSettings(settings.copy(libraryStatusBarStyle = "MINIMAL_LINE")) },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.HorizontalRule,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    },
+                                    label = { Text("Минимал-лайн") }
                                 )
                             }
                         }
+
+                        SettingToggleRow(
+                            title = "Количество тайтлов в статусах",
+                            subtitle = "Отображать число тайтлов в кнопках панели статусов",
+                            checked = settings.showStatusBarItemCounts,
+                            onCheckedChange = { viewModel.updateAppSettings(settings.copy(showStatusBarItemCounts = it)) }
+                        )
 
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
                     }
@@ -830,10 +876,66 @@ fun SettingsScreen(
 
                     SettingToggleRow(
                         title = "Распределение по жанрам",
-                        subtitle = "Круговая диаграмма распределения прочитанных жанров",
+                        subtitle = "График распределения прочитанных и просмотренных жанров",
                         checked = settings.statsShowGenreDistribution,
                         onCheckedChange = { viewModel.updateAppSettings(settings.copy(statsShowGenreDistribution = it)) }
                     )
+
+                    if (settings.statsShowGenreDistribution) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 12.dp, top = 2.dp, bottom = 6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = "Стиль диаграммы жанров",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Выберите тип отображения: круговая или лепестковая (радар)",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                FilterChip(
+                                    selected = settings.genreChartType == "DONUT",
+                                    onClick = { viewModel.updateAppSettings(settings.copy(genreChartType = "DONUT")) },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.DonutLarge,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    },
+                                    label = { Text("Кольцевая (круговая)") }
+                                )
+                                FilterChip(
+                                    selected = settings.genreChartType == "RADAR",
+                                    onClick = { viewModel.updateAppSettings(settings.copy(genreChartType = "RADAR")) },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Hub,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    },
+                                    label = { Text("Лепестковая (радар)") }
+                                )
+                            }
+
+                            SettingToggleRow(
+                                title = "Количество тайтлов в жанрах",
+                                subtitle = "Отображать число тайтлов в скобках на диаграмме и в списке",
+                                checked = settings.statsRadarShowItemCounts,
+                                onCheckedChange = { viewModel.updateAppSettings(settings.copy(statsRadarShowItemCounts = it)) }
+                            )
+                        }
+                    }
 
                     SettingToggleRow(
                         title = "Топ книг по объёму",
