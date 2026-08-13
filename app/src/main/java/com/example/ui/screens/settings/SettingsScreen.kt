@@ -331,10 +331,10 @@ fun SettingsScreen(
                                 )
 
                                 // Palette Color Swatches Preview Strip
-                                Row(
+                                FlowRow(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
                                     ColorDotSample(palette.background, "Фон")
                                     ColorDotSample(palette.surface, "Карточки")
@@ -420,10 +420,10 @@ fun SettingsScreen(
                             )
 
                             // Preview current custom colors
-                            Row(
+                            FlowRow(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 ColorDotSample(parseColorHex(settings.customBackgroundHex, Color(0xFF131313)), "Фон")
                                 ColorDotSample(parseColorHex(settings.customSurfaceHex, Color(0xFF131313)), "Карточка")
