@@ -94,6 +94,7 @@ data class AppSettings(
     
     // Animation settings
     val disableAnimations: Boolean = false,
+    val headerEnabled: Boolean = true,
 
     // Color Palette and Custom HEX Theme Customization
     val activePalette: String = "CLASSIC_DARK", // "CLASSIC_DARK", "MIDNIGHT_NEON", "OBSIDIAN_JADE", "ROYAL_AMETHYST", "VOLCANIC_SUNSET", "CUSTOM"

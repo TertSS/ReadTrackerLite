@@ -256,88 +256,165 @@ fun TierListScreen(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
-                    .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+            if (settings.headerEnabled) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
+                        .statusBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
-                    Text(
-                        text = "Тир-лист",
-                        style = if (settings.uniformHeadersEnabled) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Тир-лист",
+                            style = if (settings.uniformHeadersEnabled) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
 
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        IconButton(
-                            onClick = {
-                                if (!isExporting) {
-                                    isExporting = true
-                                    val modeLabel = if (currentMode == LibraryMode.BOOKS) "Книги и новеллы" else "Экранизации"
-                                    Toast.makeText(context, "Генерация тир-листа с обложками...", Toast.LENGTH_SHORT).show()
-                                    coroutineScope.launch {
-                                        exportTierListToGallery(
-                                            context = context,
-                                            tierRows = visibleTierRows,
-                                            allBooks = allBooks,
-                                            allAdaptations = allAdaptations,
-                                            modeLabel = modeLabel
-                                        )
-                                        isExporting = false
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            IconButton(
+                                onClick = {
+                                    if (!isExporting) {
+                                        isExporting = true
+                                        val modeLabel = if (currentMode == LibraryMode.BOOKS) "Книги и новеллы" else "Экранизации"
+                                        Toast.makeText(context, "Генерация тир-листа с обложками...", Toast.LENGTH_SHORT).show()
+                                        coroutineScope.launch {
+                                            exportTierListToGallery(
+                                                context = context,
+                                                tierRows = visibleTierRows,
+                                                allBooks = allBooks,
+                                                allAdaptations = allAdaptations,
+                                                modeLabel = modeLabel
+                                            )
+                                            isExporting = false
+                                        }
                                     }
+                                },
+                                enabled = !isExporting,
+                                modifier = Modifier.testTag("tier_download_btn")
+                            ) {
+                                if (isExporting) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        strokeWidth = 2.dp,
+                                        color = MaterialTheme.colorScheme.tertiary
+                                    )
+                                } else {
+                                    Icon(
+                                        Icons.Default.Download,
+                                        contentDescription = "Скачать в галерею",
+                                        tint = MaterialTheme.colorScheme.tertiary
+                                    )
                                 }
-                            },
-                            enabled = !isExporting,
-                            modifier = Modifier.testTag("tier_download_btn")
-                        ) {
-                            if (isExporting) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    strokeWidth = 2.dp,
-                                    color = MaterialTheme.colorScheme.tertiary
-                                )
-                            } else {
-                                Icon(
-                                    Icons.Default.Download,
-                                    contentDescription = "Скачать в галерею",
-                                    tint = MaterialTheme.colorScheme.tertiary
-                                )
+                            }
+
+                            IconButton(
+                                onClick = { showPresetMenu = true },
+                                modifier = Modifier.testTag("tier_presets_btn")
+                            ) {
+                                Icon(Icons.Default.Tune, contentDescription = "Пресеты", tint = MaterialTheme.colorScheme.primary)
+                            }
+
+                            IconButton(
+                                onClick = { showAddRowDialog = true },
+                                modifier = Modifier.testTag("tier_add_row_btn")
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = "Добавить строку", tint = MaterialTheme.colorScheme.secondary)
                             }
                         }
+                    }
 
-                        IconButton(
-                            onClick = { showPresetMenu = true },
-                            modifier = Modifier.testTag("tier_presets_btn")
-                        ) {
-                            Icon(Icons.Default.Tune, contentDescription = "Пресеты", tint = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Switch between Books & Adaptations
+                    ModeTogglePill(
+                        currentMode = currentMode,
+                        onModeChanged = { newMode ->
+                            viewModel.libraryMode.value = newMode
+                            viewModel.ensureTierRowsExist(newMode)
                         }
+                    )
+                }
+            } else {
+                // When header is disabled, the buttons move next to the book/adaptation toggle on the right edge
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.background)
+                        .statusBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        ModeTogglePill(
+                            currentMode = currentMode,
+                            onModeChanged = { newMode ->
+                                viewModel.libraryMode.value = newMode
+                                viewModel.ensureTierRowsExist(newMode)
+                            }
+                        )
 
-                        IconButton(
-                            onClick = { showAddRowDialog = true },
-                            modifier = Modifier.testTag("tier_add_row_btn")
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = "Добавить строку", tint = MaterialTheme.colorScheme.secondary)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            IconButton(
+                                onClick = {
+                                    if (!isExporting) {
+                                        isExporting = true
+                                        val modeLabel = if (currentMode == LibraryMode.BOOKS) "Книги и новеллы" else "Экранизации"
+                                        Toast.makeText(context, "Генерация тир-листа с обложками...", Toast.LENGTH_SHORT).show()
+                                        coroutineScope.launch {
+                                            exportTierListToGallery(
+                                                context = context,
+                                                tierRows = visibleTierRows,
+                                                allBooks = allBooks,
+                                                allAdaptations = allAdaptations,
+                                                modeLabel = modeLabel
+                                            )
+                                            isExporting = false
+                                        }
+                                    }
+                                },
+                                enabled = !isExporting,
+                                modifier = Modifier.testTag("tier_download_btn")
+                            ) {
+                                if (isExporting) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        strokeWidth = 2.dp,
+                                        color = MaterialTheme.colorScheme.tertiary
+                                    )
+                                } else {
+                                    Icon(
+                                        Icons.Default.Download,
+                                        contentDescription = "Скачать в галерею",
+                                        tint = MaterialTheme.colorScheme.tertiary
+                                    )
+                                }
+                            }
+
+                            IconButton(
+                                onClick = { showPresetMenu = true },
+                                modifier = Modifier.testTag("tier_presets_btn")
+                            ) {
+                                Icon(Icons.Default.Tune, contentDescription = "Пресеты", tint = MaterialTheme.colorScheme.primary)
+                            }
+
+                            IconButton(
+                                onClick = { showAddRowDialog = true },
+                                modifier = Modifier.testTag("tier_add_row_btn")
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = "Добавить строку", tint = MaterialTheme.colorScheme.secondary)
+                            }
                         }
                     }
                 }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Switch between Books & Adaptations
-                ModeTogglePill(
-                    currentMode = currentMode,
-                    onModeChanged = { newMode ->
-                        viewModel.libraryMode.value = newMode
-                        viewModel.ensureTierRowsExist(newMode)
-                    }
-                )
             }
         }
     ) { paddingValues ->

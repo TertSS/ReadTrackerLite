@@ -177,18 +177,22 @@ fun SettingsScreen(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Настройки",
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+            if (settings.headerEnabled) {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "Настройки",
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
                     )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
                 )
-            )
+            } else {
+                Spacer(modifier = Modifier.statusBarsPadding())
+            }
         }
     ) { paddingValues ->
         Column(
@@ -752,6 +756,13 @@ fun SettingsScreen(
                         subtitle = "Мгновенные переходы между экранами без анимационных эффектов",
                         checked = settings.disableAnimations,
                         onCheckedChange = { viewModel.updateAppSettings(settings.copy(disableAnimations = it)) }
+                    )
+
+                    SettingToggleRow(
+                        title = "Отключение шапки (TopAppBar)",
+                        subtitle = "Скрыть верхнюю панель во всех окнах. В тир-листе кнопки переедут к переключателю.",
+                        checked = !settings.headerEnabled,
+                        onCheckedChange = { viewModel.updateAppSettings(settings.copy(headerEnabled = !it)) }
                     )
 
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))

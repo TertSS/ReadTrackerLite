@@ -67,46 +67,92 @@ fun LibraryScreen(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
-                    .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            ) {
-                // App Bar Header with ReadTracker title and Mode Switcher
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+            if (settings.headerEnabled) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
+                        .statusBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    // App Bar Header with ReadTracker title and Mode Switcher
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.weight(1f, fill = false)
+                        ) {
+                            Text(
+                                text = "ReadTracker",
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+
+                            // Mode Selector Pill (Книги / Экранизации) placed in top bar to the right of title
+                            if (settings.adaptationsEnabled && settings.showLibraryModeSwitcher) {
+                                ModeTogglePill(
+                                    currentMode = currentMode,
+                                    onModeChanged = { viewModel.setLibraryMode(it) },
+                                    showAdaptations = true
+                                )
+                            }
+                        }
+
+                        if (settings.showViewModeSwitcher) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                IconButton(
+                                    onClick = { viewModel.isGridView.value = !isGrid },
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                                        .testTag("view_mode_toggle_btn")
+                                ) {
+                                    Icon(
+                                        imageVector = if (isGrid) Icons.AutoMirrored.Filled.ViewList else Icons.Default.GridView,
+                                        contentDescription = "Переключить вид",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                // If header is disabled, we might still want the mode switcher and view mode switcher.
+                // Let's place them in a smaller top bar without the app title.
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.background)
+                        .statusBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.weight(1f, fill = false)
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "ReadTracker",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-
-                        // Mode Selector Pill (Книги / Экранизации) placed in top bar to the right of title
                         if (settings.adaptationsEnabled && settings.showLibraryModeSwitcher) {
                             ModeTogglePill(
                                 currentMode = currentMode,
                                 onModeChanged = { viewModel.setLibraryMode(it) },
                                 showAdaptations = true
                             )
+                        } else {
+                            Spacer(modifier = Modifier.weight(1f))
                         }
-                    }
 
-                    if (settings.showViewModeSwitcher) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
+                        if (settings.showViewModeSwitcher) {
                             IconButton(
                                 onClick = { viewModel.isGridView.value = !isGrid },
                                 modifier = Modifier
