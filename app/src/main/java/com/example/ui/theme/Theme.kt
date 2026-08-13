@@ -39,6 +39,13 @@ fun ReadTrackerTheme(
 ) {
     val colorScheme = remember(settings) { buildColorSchemeFromSettings(settings) }
     val statusColors = remember(settings) { buildStatusColorsFromSettings(settings) }
+    val statusBadgeStyle = remember(settings) {
+        if (settings.activeCardPresetId == "STANDARD" || settings.cardLayoutConfigJson.isBlank()) {
+            settings.statusBadgeStyle
+        } else {
+            settings.getCardLayoutConfig().statusStyle
+        }
+    }
     val shapes = if (roundedInputFields) RoundedShapes else DefaultShapes
 
     val view = LocalView.current
@@ -60,7 +67,8 @@ fun ReadTrackerTheme(
     }
 
     CompositionLocalProvider(
-        LocalStatusColors provides statusColors
+        LocalStatusColors provides statusColors,
+        LocalStatusBadgeStyle provides statusBadgeStyle
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

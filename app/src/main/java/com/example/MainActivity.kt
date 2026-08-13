@@ -22,6 +22,7 @@ import com.example.data.models.LibraryMode
 import com.example.data.repository.ReadTrackerRepository
 import com.example.ui.components.ReadTrackerBottomNav
 import com.example.ui.components.ReadTrackerNavigationRail
+import com.example.ui.redesign.*
 import com.example.ui.screens.details.AdaptationDetailScreen
 import com.example.ui.screens.details.TitleDetailScreen
 import com.example.ui.screens.edit.AddEditAdaptationScreen
@@ -177,10 +178,17 @@ fun MainAppContent(
 
         Row(modifier = Modifier.fillMaxSize()) {
             if (isTablet && !isOverlayOpen) {
-                ReadTrackerNavigationRail(
-                    currentTab = currentTab,
-                    onTabSelected = { viewModel.setTab(it) }
-                )
+                if (settings.redesignedUiEnabled) {
+                    RedesignedNavRail(
+                        currentTab = currentTab,
+                        onTabSelected = { viewModel.setTab(it) }
+                    )
+                } else {
+                    ReadTrackerNavigationRail(
+                        currentTab = currentTab,
+                        onTabSelected = { viewModel.setTab(it) }
+                    )
+                }
             }
 
             Box(
@@ -193,10 +201,17 @@ fun MainAppContent(
                     contentWindowInsets = WindowInsets(0, 0, 0, 0),
                     bottomBar = {
                         if (!isTablet && !isOverlayOpen) {
-                            ReadTrackerBottomNav(
-                                currentTab = currentTab,
-                                onTabSelected = { viewModel.setTab(it) }
-                            )
+                            if (settings.redesignedUiEnabled) {
+                                RedesignedBottomBar(
+                                    currentTab = currentTab,
+                                    onTabSelected = { viewModel.setTab(it) }
+                                )
+                            } else {
+                                ReadTrackerBottomNav(
+                                    currentTab = currentTab,
+                                    onTabSelected = { viewModel.setTab(it) }
+                                )
+                            }
                         }
                     }
                 ) { paddingValues ->
@@ -205,12 +220,22 @@ fun MainAppContent(
                             .fillMaxSize()
                             .padding(bottom = paddingValues.calculateBottomPadding())
                     ) {
-                        when (currentTab) {
-                            "library" -> LibraryScreen(viewModel = viewModel)
-                            "reviews" -> ReviewsScreen(viewModel = viewModel)
-                            "stats" -> StatsScreen(viewModel = viewModel)
-                            "tier_list" -> TierListScreen(viewModel = viewModel)
-                            "settings" -> SettingsScreen(viewModel = viewModel)
+                        if (settings.redesignedUiEnabled) {
+                            when (currentTab) {
+                                "library" -> RedesignedLibraryScreen(viewModel = viewModel)
+                                "reviews" -> RedesignedReviewsScreen(viewModel = viewModel)
+                                "stats" -> RedesignedStatsScreen(viewModel = viewModel)
+                                "tier_list" -> RedesignedTierListScreen(viewModel = viewModel)
+                                "settings" -> RedesignedSettingsScreen(viewModel = viewModel)
+                            }
+                        } else {
+                            when (currentTab) {
+                                "library" -> LibraryScreen(viewModel = viewModel)
+                                "reviews" -> ReviewsScreen(viewModel = viewModel)
+                                "stats" -> StatsScreen(viewModel = viewModel)
+                                "tier_list" -> TierListScreen(viewModel = viewModel)
+                                "settings" -> SettingsScreen(viewModel = viewModel)
+                            }
                         }
                     }
                 }
@@ -226,14 +251,25 @@ fun MainAppContent(
             val bookIdToDisplay = selectedBookId ?: activeBookId
             bookIdToDisplay?.let { id ->
                 val book = allBooks.find { it.id == id }
-                TitleDetailScreen(
-                    bookId = id,
-                    viewModel = viewModel,
-                    onBack = { viewModel.closeDetails() },
-                    onEdit = {
-                        viewModel.editingBook.value = book
-                    }
-                )
+                if (settings.redesignedUiEnabled) {
+                    RedesignedTitleDetailScreen(
+                        bookId = id,
+                        viewModel = viewModel,
+                        onBack = { viewModel.closeDetails() },
+                        onEdit = {
+                            viewModel.editingBook.value = book
+                        }
+                    )
+                } else {
+                    TitleDetailScreen(
+                        bookId = id,
+                        viewModel = viewModel,
+                        onBack = { viewModel.closeDetails() },
+                        onEdit = {
+                            viewModel.editingBook.value = book
+                        }
+                    )
+                }
             }
         }
 
@@ -245,14 +281,25 @@ fun MainAppContent(
             val adIdToDisplay = selectedAdaptationId ?: activeAdaptationId
             adIdToDisplay?.let { id ->
                 val adaptation = allAdaptations.find { it.id == id }
-                AdaptationDetailScreen(
-                    adaptationId = id,
-                    viewModel = viewModel,
-                    onBack = { viewModel.closeDetails() },
-                    onEdit = {
-                        viewModel.editingAdaptation.value = adaptation
-                    }
-                )
+                if (settings.redesignedUiEnabled) {
+                    RedesignedAdaptationDetailScreen(
+                        adaptationId = id,
+                        viewModel = viewModel,
+                        onBack = { viewModel.closeDetails() },
+                        onEdit = {
+                            viewModel.editingAdaptation.value = adaptation
+                        }
+                    )
+                } else {
+                    AdaptationDetailScreen(
+                        adaptationId = id,
+                        viewModel = viewModel,
+                        onBack = { viewModel.closeDetails() },
+                        onEdit = {
+                            viewModel.editingAdaptation.value = adaptation
+                        }
+                    )
+                }
             }
         }
 

@@ -13,6 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.StarHalf
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -261,6 +262,7 @@ fun ModeTogglePill(
 fun StatusBadge(
     status: TitleStatus,
     isAdaptation: Boolean = false,
+    style: String = LocalStatusBadgeStyle.current,
     modifier: Modifier = Modifier
 ) {
     val statusColors = LocalStatusColors.current
@@ -272,32 +274,180 @@ fun StatusBadge(
         TitleStatus.DROPPED -> statusColors.dropped to "Брошено"
     }
 
-    val bgColor = statusColor.copy(alpha = 0.15f)
-    val textColor = statusColor
+    val statusIcon = when (status) {
+        TitleStatus.READING -> if (isAdaptation) Icons.Default.Visibility else Icons.AutoMirrored.Filled.MenuBook
+        TitleStatus.PLANNED -> Icons.Default.Bookmark
+        TitleStatus.COMPLETED -> Icons.Default.CheckCircle
+        TitleStatus.PAUSED -> Icons.Default.PauseCircle
+        TitleStatus.DROPPED -> Icons.Default.Cancel
+    }
 
-    Surface(
-        modifier = modifier.clip(RoundedCornerShape(6.dp)),
-        color = bgColor,
-        shape = RoundedCornerShape(6.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(6.dp)
-                    .clip(CircleShape)
-                    .background(textColor)
-            )
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = text,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = textColor,
-                fontSize = 11.sp
-            )
+    when (style) {
+        "MINIMAL_DOT" -> {
+            Surface(
+                modifier = modifier.clip(CircleShape),
+                color = Color.Black.copy(alpha = 0.5f),
+                shape = CircleShape
+            ) {
+                Box(
+                    modifier = Modifier
+                        .padding(5.dp)
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(statusColor)
+                )
+            }
+        }
+        "DOT_TEXT" -> {
+            Row(
+                modifier = modifier.padding(vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(7.dp)
+                        .clip(CircleShape)
+                        .background(statusColor)
+                )
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = statusColor,
+                    fontSize = 11.sp
+                )
+            }
+        }
+        "ACCENT_BAR" -> {
+            Surface(
+                modifier = modifier.clip(RoundedCornerShape(4.dp)),
+                color = statusColor,
+                shape = RoundedCornerShape(4.dp)
+            ) {
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                    fontSize = 10.sp
+                )
+            }
+        }
+        "OUTLINE_GLOW" -> {
+            Surface(
+                modifier = modifier.clip(RoundedCornerShape(7.dp)),
+                color = statusColor.copy(alpha = 0.10f),
+                shape = RoundedCornerShape(7.dp),
+                border = BorderStroke(1.dp, statusColor.copy(alpha = 0.85f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.5.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.5.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(5.dp)
+                            .clip(CircleShape)
+                            .background(statusColor)
+                    )
+                    Text(
+                        text = text,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = statusColor,
+                        fontSize = 10.5.sp
+                    )
+                }
+            }
+        }
+        "GLASS_FROSTED" -> {
+            Surface(
+                modifier = modifier.clip(RoundedCornerShape(9.dp)),
+                color = Color(0xCC161920),
+                shape = RoundedCornerShape(9.dp),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.22f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(7.dp)
+                            .clip(CircleShape)
+                            .background(statusColor)
+                    )
+                    Text(
+                        text = text,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White.copy(alpha = 0.95f),
+                        fontSize = 10.5.sp
+                    )
+                }
+            }
+        }
+        "ICON_CHIP" -> {
+            Surface(
+                modifier = modifier.clip(RoundedCornerShape(6.dp)),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.92f),
+                shape = RoundedCornerShape(6.dp),
+                border = BorderStroke(0.8.dp, statusColor.copy(alpha = 0.45f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.5.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = statusIcon,
+                        contentDescription = null,
+                        tint = statusColor,
+                        modifier = Modifier.size(12.dp)
+                    )
+                    Text(
+                        text = text,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = 10.5.sp
+                    )
+                }
+            }
+        }
+        else -> { // "PILL"
+            val bgColor = statusColor.copy(alpha = 0.15f)
+            val textColor = statusColor
+
+            Surface(
+                modifier = modifier.clip(RoundedCornerShape(6.dp)),
+                color = bgColor,
+                shape = RoundedCornerShape(6.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .clip(CircleShape)
+                            .background(textColor)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = text,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = textColor,
+                        fontSize = 11.sp
+                    )
+                }
+            }
         }
     }
 }

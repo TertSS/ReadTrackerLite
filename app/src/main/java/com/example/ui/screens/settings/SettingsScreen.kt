@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.models.*
+import com.example.ui.components.StatusBadge
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.ReadTrackerViewModel
 import com.example.utils.BackupHelper
@@ -69,6 +70,15 @@ fun SettingsScreen(
     var settingsExportJsonText by remember { mutableStateOf("") }
     var settingsImportJsonText by remember { mutableStateOf("") }
     var showCustomPaletteEditor by remember { mutableStateOf(false) }
+    var showCardEditor by remember { mutableStateOf(false) }
+
+    if (showCardEditor) {
+        CardEditorScreen(
+            viewModel = viewModel,
+            onDismiss = { showCardEditor = false }
+        )
+        return
+    }
 
     if (showCustomPaletteEditor) {
         CustomPaletteEditorScreen(
@@ -203,6 +213,88 @@ fun SettingsScreen(
                 .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // 🌟 MASTER REDESIGN SWITCH HERO CARD
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                border = BorderStroke(
+                    1.5.dp,
+                    Brush.horizontalGradient(
+                        listOf(Color(0xFF3B82F6), Color(0xFF8B5CF6), Color(0xFF10B981))
+                    )
+                )
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Brush.linearGradient(
+                                listOf(Color(0x223B82F6), Color(0x118B5CF6), Color.Transparent)
+                            )
+                        )
+                        .padding(16.dp)
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = Color(0xFF3B82F6)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.AutoAwesome,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.padding(8.dp).size(22.dp)
+                                    )
+                                }
+
+                                Column {
+                                    Text(
+                                        text = "Обновленный интерфейс 2.0",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "Авторский дизайн и идеальная палитра",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color(0xFF3B82F6)
+                                    )
+                                }
+                            }
+
+                            Switch(
+                                checked = settings.redesignedUiEnabled,
+                                onCheckedChange = { isChecked ->
+                                    viewModel.updateAppSettings(settings.copy(redesignedUiEnabled = isChecked))
+                                },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Color.White,
+                                    checkedTrackColor = Color(0xFF3B82F6)
+                                )
+                            )
+                        }
+
+                        Text(
+                            text = "Переключает всё приложение на современный авторский интерфейс 2.0 с выверенной единой палитрой Obsidian Aurora, плавной навигацией и улучшенным UX.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = 18.sp
+                        )
+                    }
+                }
+            }
+
             // 🎨 COLOR PALETTES & THEMES SECTION
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -842,6 +934,90 @@ fun SettingsScreen(
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
                     }
 
+                    // Full Visual Card Constructor Banner
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showCardEditor = true },
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                        ),
+                        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.6f))
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(MaterialTheme.colorScheme.primary),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.DashboardCustomize,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text(
+                                        text = "Конструктор карточки",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    val activeLabel = when {
+                                        settings.activeCardPresetId == "STANDARD" -> "Стандартный"
+                                        settings.getCustomPresets().any { it.id == settings.activeCardPresetId } -> {
+                                            "«${settings.getCustomPresets().firstOrNull { it.id == settings.activeCardPresetId }?.name ?: "Свой стиль"}»"
+                                        }
+                                        settings.activeCardPresetId.startsWith("SYSTEM_") -> "Шаблон"
+                                        else -> "Свой стиль"
+                                    }
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = MaterialTheme.colorScheme.primaryContainer,
+                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+                                    ) {
+                                        Text(
+                                            text = activeLabel,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            fontSize = 10.sp,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text = "Настройка геометрии, пропорций обложки (2:3, 3:4, 16:9), скругления и расположение элементов с сохранением своих стилей",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            Icon(
+                                imageVector = Icons.Default.ChevronRight,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+
                     // Card Style for items without cover
                     Column(
                         modifier = Modifier.fillMaxWidth(),
@@ -849,45 +1025,102 @@ fun SettingsScreen(
                     ) {
                         Column {
                             Text("Вид карточек без обложки", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                            Text("Внешний вид карточек в библиотеке при отсутствии обложки", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Внешний вид карточек в библиотеке при отсутствии обложки (активирует стандартный стиль)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
+                            val isStandardActive = settings.activeCardPresetId == "STANDARD"
                             FilterChip(
-                                selected = settings.coverlessCardStyle == "CLASSIC",
-                                onClick = { viewModel.updateAppSettings(settings.copy(coverlessCardStyle = "CLASSIC")) },
+                                selected = isStandardActive && settings.coverlessCardStyle == "CLASSIC",
+                                onClick = {
+                                    viewModel.updateAppSettings(
+                                        settings.copy(
+                                            coverlessCardStyle = "CLASSIC",
+                                            activeCardPresetId = "STANDARD",
+                                            cardLayoutConfigJson = ""
+                                        )
+                                    )
+                                },
                                 label = { Text("Классический") }
                             )
                             FilterChip(
-                                selected = settings.coverlessCardStyle == "MINIMAL",
-                                onClick = { viewModel.updateAppSettings(settings.copy(coverlessCardStyle = "MINIMAL")) },
+                                selected = isStandardActive && settings.coverlessCardStyle == "MINIMAL",
+                                onClick = {
+                                    viewModel.updateAppSettings(
+                                        settings.copy(
+                                            coverlessCardStyle = "MINIMAL",
+                                            activeCardPresetId = "STANDARD",
+                                            cardLayoutConfigJson = ""
+                                        )
+                                    )
+                                },
                                 label = { Text("Минималистичный") }
                             )
                             FilterChip(
-                                selected = settings.coverlessCardStyle == "GRADIENT",
-                                onClick = { viewModel.updateAppSettings(settings.copy(coverlessCardStyle = "GRADIENT")) },
+                                selected = isStandardActive && settings.coverlessCardStyle == "GRADIENT",
+                                onClick = {
+                                    viewModel.updateAppSettings(
+                                        settings.copy(
+                                            coverlessCardStyle = "GRADIENT",
+                                            activeCardPresetId = "STANDARD",
+                                            cardLayoutConfigJson = ""
+                                        )
+                                    )
+                                },
                                 label = { Text("Градиентный") }
                             )
                             FilterChip(
-                                selected = settings.coverlessCardStyle == "COMPACT",
-                                onClick = { viewModel.updateAppSettings(settings.copy(coverlessCardStyle = "COMPACT")) },
+                                selected = isStandardActive && settings.coverlessCardStyle == "COMPACT",
+                                onClick = {
+                                    viewModel.updateAppSettings(
+                                        settings.copy(
+                                            coverlessCardStyle = "COMPACT",
+                                            activeCardPresetId = "STANDARD",
+                                            cardLayoutConfigJson = ""
+                                        )
+                                    )
+                                },
                                 label = { Text("Компактный") }
                             )
                             FilterChip(
-                                selected = settings.coverlessCardStyle == "OUTLINE",
-                                onClick = { viewModel.updateAppSettings(settings.copy(coverlessCardStyle = "OUTLINE")) },
+                                selected = isStandardActive && settings.coverlessCardStyle == "OUTLINE",
+                                onClick = {
+                                    viewModel.updateAppSettings(
+                                        settings.copy(
+                                            coverlessCardStyle = "OUTLINE",
+                                            activeCardPresetId = "STANDARD",
+                                            cardLayoutConfigJson = ""
+                                        )
+                                    )
+                                },
                                 label = { Text("Контурный") }
                             )
                             FilterChip(
-                                selected = settings.coverlessCardStyle == "TYPOGRAPHY",
-                                onClick = { viewModel.updateAppSettings(settings.copy(coverlessCardStyle = "TYPOGRAPHY")) },
+                                selected = isStandardActive && settings.coverlessCardStyle == "TYPOGRAPHY",
+                                onClick = {
+                                    viewModel.updateAppSettings(
+                                        settings.copy(
+                                            coverlessCardStyle = "TYPOGRAPHY",
+                                            activeCardPresetId = "STANDARD",
+                                            cardLayoutConfigJson = ""
+                                        )
+                                    )
+                                },
                                 label = { Text("Типографика") }
                             )
                             FilterChip(
-                                selected = settings.coverlessCardStyle == "TONAL",
-                                onClick = { viewModel.updateAppSettings(settings.copy(coverlessCardStyle = "TONAL")) },
+                                selected = isStandardActive && settings.coverlessCardStyle == "TONAL",
+                                onClick = {
+                                    viewModel.updateAppSettings(
+                                        settings.copy(
+                                            coverlessCardStyle = "TONAL",
+                                            activeCardPresetId = "STANDARD",
+                                            cardLayoutConfigJson = ""
+                                        )
+                                    )
+                                },
                                 label = { Text("Тональный") }
                             )
                         }
@@ -916,6 +1149,90 @@ fun SettingsScreen(
                                     selected = settings.compactTagPosition == "LEFT_OF_STATUS",
                                     onClick = { viewModel.updateAppSettings(settings.copy(compactTagPosition = "LEFT_OF_STATUS")) },
                                     label = { Text("Возле статуса слева") }
+                                )
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+
+                    // Status Badge Style Selector in Settings
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Column {
+                            Text(
+                                text = "Стиль блока статуса",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Формат отображения статуса тайтла (Читаю, В планах, Завершено) на карточках",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        val activeStatusStyle = if (settings.activeCardPresetId == "STANDARD" || settings.cardLayoutConfigJson.isBlank()) {
+                            settings.statusBadgeStyle
+                        } else {
+                            settings.getCardLayoutConfig().statusStyle
+                        }
+
+                        val stylesList = listOf(
+                            "PILL" to "Капсула с точкой",
+                            "DOT_TEXT" to "Точка с текстом",
+                            "MINIMAL_DOT" to "Только точка",
+                            "ACCENT_BAR" to "Сплошной акцент",
+                            "OUTLINE_GLOW" to "Неоновый контур",
+                            "GLASS_FROSTED" to "Матовое стекло",
+                            "ICON_CHIP" to "Иконка с символом"
+                        )
+
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            stylesList.forEach { (styleKey, styleName) ->
+                                FilterChip(
+                                    selected = activeStatusStyle == styleKey,
+                                    onClick = {
+                                        val curConfig = settings.getCardLayoutConfig()
+                                        val updatedConfig = curConfig.copy(statusStyle = styleKey)
+                                        viewModel.updateAppSettings(
+                                            settings.copy(
+                                                statusBadgeStyle = styleKey,
+                                                cardLayoutConfigJson = if (settings.cardLayoutConfigJson.isNotBlank()) updatedConfig.toJson() else ""
+                                            )
+                                        )
+                                    },
+                                    label = { Text(styleName) }
+                                )
+                            }
+                        }
+
+                        // Live preview sample of selected status block
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainer,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "Пример в карточке:",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                StatusBadge(
+                                    status = TitleStatus.READING,
+                                    style = activeStatusStyle
                                 )
                             }
                         }
@@ -1217,7 +1534,7 @@ fun SettingsScreen(
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "Выберите тип отображения: круговая или лепестковая (радар)",
+                                text = "Выберите тип отображения: органические лепестки, неоновый радар, кольцевая или каскад",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -1226,16 +1543,16 @@ fun SettingsScreen(
                                 verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 FilterChip(
-                                    selected = settings.genreChartType == "DONUT",
-                                    onClick = { viewModel.updateAppSettings(settings.copy(genreChartType = "DONUT")) },
+                                    selected = settings.genreChartType == "PETAL" || settings.genreChartType.isBlank(),
+                                    onClick = { viewModel.updateAppSettings(settings.copy(genreChartType = "PETAL")) },
                                     leadingIcon = {
                                         Icon(
-                                            imageVector = Icons.Default.DonutLarge,
+                                            imageVector = Icons.Default.LocalFlorist,
                                             contentDescription = null,
                                             modifier = Modifier.size(16.dp)
                                         )
                                     },
-                                    label = { Text("Кольцевая (круговая)") }
+                                    label = { Text("Лепестки (роза)") }
                                 )
                                 FilterChip(
                                     selected = settings.genreChartType == "RADAR",
@@ -1247,7 +1564,31 @@ fun SettingsScreen(
                                             modifier = Modifier.size(16.dp)
                                         )
                                     },
-                                    label = { Text("Лепестковая (радар)") }
+                                    label = { Text("Радар (паутина)") }
+                                )
+                                FilterChip(
+                                    selected = settings.genreChartType == "DONUT",
+                                    onClick = { viewModel.updateAppSettings(settings.copy(genreChartType = "DONUT")) },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.DonutLarge,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    },
+                                    label = { Text("Кольцевая") }
+                                )
+                                FilterChip(
+                                    selected = settings.genreChartType == "BARS",
+                                    onClick = { viewModel.updateAppSettings(settings.copy(genreChartType = "BARS")) },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.ViewStream,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    },
+                                    label = { Text("Каскад") }
                                 )
                             }
 

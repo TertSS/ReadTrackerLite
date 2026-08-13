@@ -52,7 +52,7 @@ data class AppSettings(
     val statsShowSeasons: Boolean = true,
     val statsShowAdaptationsCompleted: Boolean = true,
     val statsShowGenreDistribution: Boolean = true,
-    val genreChartType: String = "DONUT", // "DONUT" (круговая / кольцевая), "RADAR" (лепестковая)
+    val genreChartType: String = "PETAL", // "PETAL" (лепестковая роза), "RADAR" (радар/полигон), "DONUT" (кольцевая), "BARS" (каскадная)
     val statsRadarShowItemCounts: Boolean = true,
     val statsShowTopBooks: Boolean = true,
     
@@ -129,5 +129,50 @@ data class AppSettings(
     val customStatusPlannedHex: String = "#FFB77B",
     val customStatusCompletedHex: String = "#9ECAFF",
     val customStatusPausedHex: String = "#BFC7D4",
-    val customStatusDroppedHex: String = "#FFB4AB"
-)
+    val customStatusDroppedHex: String = "#FFB4AB",
+    
+    // Status Badge Style: "PILL", "DOT_TEXT", "MINIMAL_DOT", "ACCENT_BAR", "OUTLINE_GLOW", "GLASS_FROSTED", "ICON_CHIP"
+    val statusBadgeStyle: String = "PILL",
+
+    // Modern Redesigned UI 2.0 Mode
+    val redesignedUiEnabled: Boolean = false,
+
+    // Card Layout Configuration & Custom Presets
+    val activeCardPresetId: String = "STANDARD", // "STANDARD" (default, uses native standard cards), "SYSTEM_CLASSIC", "SYSTEM_GLASS", "SYSTEM_MINIMAL", "SYSTEM_INFO_RICH", "SYSTEM_COMPACT", "SYSTEM_BOOK_SHELF", or custom preset ID
+    val customCardPresetsJson: String = "[]",
+    val cardLayoutConfigJson: String = ""
+) {
+    fun getCardLayoutConfig(): CardLayoutConfig {
+        return CardLayoutConfig.fromJson(cardLayoutConfigJson)
+    }
+
+    fun getCustomPresets(): List<CustomCardPreset> {
+        return CustomCardPreset.fromJsonList(customCardPresetsJson)
+    }
+
+    fun isCustomCardLayoutActive(): Boolean {
+        return activeCardPresetId != "STANDARD" && activeCardPresetId.isNotBlank()
+    }
+
+    fun getActiveCardLayoutConfig(): CardLayoutConfig? {
+        if (!isCustomCardLayoutActive()) return null
+        return when (activeCardPresetId) {
+            "SYSTEM_CLASSIC" -> CardLayoutConfig.PRESET_CLASSIC_POSTER
+            "SYSTEM_GLASS" -> CardLayoutConfig.PRESET_GLASS_POSTER
+            "SYSTEM_MINIMAL" -> CardLayoutConfig.PRESET_MINIMAL
+            "SYSTEM_INFO_RICH" -> CardLayoutConfig.PRESET_INFO_RICH
+            "SYSTEM_COMPACT" -> CardLayoutConfig.PRESET_COMPACT
+            "SYSTEM_BOOK_SHELF" -> CardLayoutConfig.PRESET_BOOK_SHELF
+            else -> {
+                val custom = getCustomPresets().find { it.id == activeCardPresetId }
+                if (custom != null) {
+                    custom.config
+                } else if (cardLayoutConfigJson.isNotBlank()) {
+                    CardLayoutConfig.fromJson(cardLayoutConfigJson)
+                } else {
+                    null
+                }
+            }
+        }
+    }
+}

@@ -280,6 +280,50 @@ val PresetPalettes = listOf(
 )
 
 /**
+ * 🌟 REDESIGNED 2.0 SIGNATURE MASTER PALETTE
+ * Exquisite obsidian-sapphire palette with amber/emerald neon accents, tailored specifically for ReadTracker 2.0.
+ */
+val RedesignedMasterPalette = ThemePaletteDefinition(
+    id = "REDESIGNED_MASTER",
+    name = "Obsidian Aurora 2.0",
+    description = "Фирменная палитра обновленного интерфейса 2.0 с глубоким обсидиановым фоном и сапфировыми акцентами",
+    primary = Color(0xFF60A5FA), // Electric Sapphire Blue
+    onPrimary = Color(0xFF091E42),
+    primaryContainer = Color(0xFF1E3A8A),
+    onPrimaryContainer = Color(0xFFDBEAFE),
+    secondary = Color(0xFF10B981), // Emerald Sage
+    onSecondary = Color(0xFF022C22),
+    secondaryContainer = Color(0xFF065F46),
+    onSecondaryContainer = Color(0xFFD1FAE5),
+    tertiary = Color(0xFFF59E0B), // Warm Luminous Amber
+    onTertiary = Color(0xFF451A03),
+    tertiaryContainer = Color(0xFF78350F),
+    onTertiaryContainer = Color(0xFFFEF3C7),
+    background = Color(0xFF0B0F19), // Deep Obsidian Navy
+    onBackground = Color(0xFFF8FAFC),
+    surface = Color(0xFF0F172A), // Slate Obsidian Glass
+    onSurface = Color(0xFFF8FAFC),
+    surfaceVariant = Color(0xFF1E293B),
+    onSurfaceVariant = Color(0xFF94A3B8),
+    surfaceContainerLowest = Color(0xFF06080F),
+    surfaceContainerLow = Color(0xFF0D1322),
+    surfaceContainer = Color(0xFF131B2E),
+    surfaceContainerHigh = Color(0xFF1B253D),
+    surfaceContainerHighest = Color(0xFF253250),
+    surfaceBright = Color(0xFF2E3D60),
+    outline = Color(0xFF334155),
+    outlineVariant = Color(0xFF1E293B),
+    error = Color(0xFFF87171),
+    errorContainer = Color(0xFF7F1D1D),
+    onError = Color(0xFF450A0A),
+    statusReading = Color(0xFF10B981), // Emerald
+    statusPlanned = Color(0xFF8B5CF6), // Amethyst Violet
+    statusCompleted = Color(0xFF38BDF8), // Sky Blue
+    statusPaused = Color(0xFF94A3B8), // Cool Slate
+    statusDropped = Color(0xFFF43F5E) // Coral Rose
+)
+
+/**
  * Status colors bundle exposed via CompositionLocal
  */
 data class StatusColors(
@@ -293,6 +337,10 @@ data class StatusColors(
 
 val LocalStatusColors = staticCompositionLocalOf {
     ClassicDarkPalette.toStatusColors()
+}
+
+val LocalStatusBadgeStyle = staticCompositionLocalOf {
+    "PILL"
 }
 
 /**
@@ -432,6 +480,9 @@ fun ThemePaletteDefinition.toStatusColors(): StatusColors {
  * Builds dynamic ColorScheme from active AppSettings.
  */
 fun buildColorSchemeFromSettings(settings: AppSettings): ColorScheme {
+    if (settings.redesignedUiEnabled) {
+        return RedesignedMasterPalette.toColorScheme()
+    }
     val palette = when (settings.activePalette) {
         "CLASSIC_DARK", "DEFAULT", "CLASSIC" -> ClassicDarkPalette
         "MONOCHROME_DARK" -> MonochromeDarkPalette
@@ -448,6 +499,9 @@ fun buildColorSchemeFromSettings(settings: AppSettings): ColorScheme {
  * Builds dynamic StatusColors from active AppSettings.
  */
 fun buildStatusColorsFromSettings(settings: AppSettings): StatusColors {
+    if (settings.redesignedUiEnabled) {
+        return RedesignedMasterPalette.toStatusColors()
+    }
     val palette = when (settings.activePalette) {
         "CLASSIC_DARK", "DEFAULT", "CLASSIC" -> ClassicDarkPalette
         "MONOCHROME_DARK" -> MonochromeDarkPalette

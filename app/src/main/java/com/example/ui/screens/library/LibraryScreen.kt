@@ -325,6 +325,7 @@ fun LibraryScreen(
                                     bookmarksEnabled = settings.bookmarksEnabled,
                                     shortenNumbers = settings.shortenNumbers,
                                     alignFormatWithTitle = settings.alignFormatWithTitle,
+                                    cardLayoutConfig = settings.getActiveCardLayoutConfig(),
                                     onClick = { viewModel.openBookDetails(book.id) },
                                     onLongClick = { bookToDelete = book }
                                 )
@@ -349,6 +350,7 @@ fun LibraryScreen(
                                             bookmarksEnabled = settings.bookmarksEnabled,
                                             shortenNumbers = settings.shortenNumbers,
                                             alignFormatWithTitle = settings.alignFormatWithTitle,
+                                            cardLayoutConfig = settings.getActiveCardLayoutConfig(),
                                             onClick = { viewModel.openBookDetails(book.id) },
                                             onLongClick = { bookToDelete = book }
                                         )
@@ -385,6 +387,7 @@ fun LibraryScreen(
                                     compactTagPosition = settings.compactTagPosition,
                                     bookmarksEnabled = settings.bookmarksEnabled,
                                     alignFormatWithTitle = settings.alignFormatWithTitle,
+                                    cardLayoutConfig = settings.getActiveCardLayoutConfig(),
                                     onClick = { viewModel.openAdaptationDetails(adaptation.id) },
                                     onLongClick = { adaptationToDelete = adaptation }
                                 )
@@ -408,6 +411,7 @@ fun LibraryScreen(
                                             compactTagPosition = settings.compactTagPosition,
                                             bookmarksEnabled = settings.bookmarksEnabled,
                                             alignFormatWithTitle = settings.alignFormatWithTitle,
+                                            cardLayoutConfig = settings.getActiveCardLayoutConfig(),
                                             onClick = { viewModel.openAdaptationDetails(adaptation.id) },
                                             onLongClick = { adaptationToDelete = adaptation }
                                         )
@@ -889,9 +893,25 @@ fun BookGridCard(
     bookmarksEnabled: Boolean = true,
     shortenNumbers: Boolean = false,
     alignFormatWithTitle: Boolean = false,
+    cardLayoutConfig: CardLayoutConfig? = null,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null
 ) {
+    if (cardLayoutConfig != null) {
+        DynamicBookGridCard(
+            book = book,
+            config = cardLayoutConfig,
+            ratingScale = ratingScale,
+            ratingEnabled = ratingEnabled,
+            bookmarksEnabled = bookmarksEnabled,
+            shortenNumbers = shortenNumbers,
+            alignFormatWithTitle = alignFormatWithTitle,
+            onClick = onClick,
+            onLongClick = onLongClick
+        )
+        return
+    }
+
     val hasCover = showCovers && !book.coverUrl.isNullOrBlank()
 
     Card(
@@ -1607,9 +1627,25 @@ fun BookListCard(
     bookmarksEnabled: Boolean = true,
     shortenNumbers: Boolean = false,
     alignFormatWithTitle: Boolean = false,
+    cardLayoutConfig: CardLayoutConfig? = null,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null
 ) {
+    if (cardLayoutConfig != null) {
+        DynamicBookListCard(
+            book = book,
+            config = cardLayoutConfig,
+            ratingScale = ratingScale,
+            ratingEnabled = ratingEnabled,
+            bookmarksEnabled = bookmarksEnabled,
+            shortenNumbers = shortenNumbers,
+            alignFormatWithTitle = alignFormatWithTitle,
+            onClick = onClick,
+            onLongClick = onLongClick
+        )
+        return
+    }
+
     val hasCover = showCovers && !book.coverUrl.isNullOrBlank()
 
     Card(
@@ -1928,9 +1964,24 @@ fun AdaptationGridCard(
     compactTagPosition: String = "UNDER_STATUS",
     bookmarksEnabled: Boolean = true,
     alignFormatWithTitle: Boolean = false,
+    cardLayoutConfig: CardLayoutConfig? = null,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null
 ) {
+    if (cardLayoutConfig != null) {
+        DynamicAdaptationCard(
+            adaptation = adaptation,
+            config = cardLayoutConfig,
+            ratingScale = ratingScale,
+            ratingEnabled = ratingEnabled,
+            bookmarksEnabled = bookmarksEnabled,
+            isGrid = true,
+            onClick = onClick,
+            onLongClick = onLongClick
+        )
+        return
+    }
+
     val hasCover = showCovers && !adaptation.coverUrl.isNullOrBlank()
 
     Card(
@@ -2082,9 +2133,24 @@ fun AdaptationListCard(
     compactTagPosition: String = "UNDER_STATUS",
     bookmarksEnabled: Boolean = true,
     alignFormatWithTitle: Boolean = false,
+    cardLayoutConfig: CardLayoutConfig? = null,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null
 ) {
+    if (cardLayoutConfig != null) {
+        DynamicAdaptationCard(
+            adaptation = adaptation,
+            config = cardLayoutConfig,
+            ratingScale = ratingScale,
+            ratingEnabled = ratingEnabled,
+            bookmarksEnabled = bookmarksEnabled,
+            isGrid = false,
+            onClick = onClick,
+            onLongClick = onLongClick
+        )
+        return
+    }
+
     val hasCover = showCovers && !adaptation.coverUrl.isNullOrBlank()
 
     Card(
